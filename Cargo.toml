@@ -1,0 +1,9 @@
+[package]
+name = "tak_server"
+version = "0.1.0"
+authors = ["Justin Kur <JustinK97@hotmail.com>"]
+
+[dependencies]
+ndarray = "0.10.0"
+regex = "0.2"
+lazy_static = "0.2"
