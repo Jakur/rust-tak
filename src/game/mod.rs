@@ -129,6 +129,44 @@ pub struct Reached {
     west: bool,
 }
 
+pub trait Opening {
+    fn legal_move<R>(state: &Game<R>, m: &Move) -> Option<Color> where R: RuleSet;
+    fn end_opening<R>(game: &Game<R>) -> bool where R: RuleSet;
+}
+
+pub struct StandardOpening {
+
+}
+
+impl Opening for StandardOpening {
+    ///If the move is illegal under the opening rules returns None. If it is legal, it returns
+    /// the color of the piece which will be placed.
+    fn legal_move<R>(game: &Game<R>, m: &Move) -> Option<Color> where R: RuleSet{
+        match m {
+            &Move::Place(ref kind, tuple) => {
+                if let &PieceKind::Flat = kind {
+                    if game.rules.out_of_bounds(tuple) {
+                        return None
+                    } else {
+                        if game.rules.get_tile(tuple).is_empty() {
+                            if game.ply == 0 { //First piece is black
+                                return Some(Color::Black)
+                            }
+                            return Some(Color::White) //Second piece is white
+                        }
+                        return None
+                    }
+                } else {return None}
+            }
+            _ => return None
+        }
+    }
+    ///Returns true if the next ply is considered to be out of the opening
+    fn end_opening<R>(game: &Game<R>) -> bool where R: RuleSet {
+        return game.ply > 0
+    }
+}
+
 pub trait RuleSet {
     ///Makes a move and returns true if a move is valid under this rule set else returns false.
     fn make_move(&mut self, m: Move) -> (bool) {
@@ -466,12 +504,16 @@ impl RuleSet for StandardRules {
 
 pub struct Game<R> where R: RuleSet {
     pub rules: R,
+    pub opening: StandardOpening, //Todo make generic
+    pub ply: u32,
 }
 
 impl<R> Game<R> where R: RuleSet {
     pub fn new(rules: R) -> Game<R> {
         Game {
             rules,
+            opening: StandardOpening {},
+            ply: 0,
         }
     }
 }
