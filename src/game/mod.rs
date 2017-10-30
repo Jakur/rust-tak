@@ -98,6 +98,8 @@ impl fmt::Debug for Tile {
     }
 }
 
+///Game state contains the board and the players. For reference, a is the first column, 1 is the
+/// first row.
 pub struct State {
     pub board: Array2<Tile>,
     pub size: u8,
@@ -130,8 +132,8 @@ pub struct Reached {
 }
 
 pub trait Opening {
-    fn legal_move<R>(state: &Game<R>, m: &Move) -> Option<Color> where R: RuleSet;
-    fn end_opening<R>(game: &Game<R>) -> bool where R: RuleSet;
+    fn legal_move<R>(&self, state: &Game<R>, m: &Move) -> Option<Color> where R: RuleSet;
+    fn is_opening<R>(&self, game: &Game<R>) -> bool where R: RuleSet;
 }
 
 pub struct StandardOpening {
@@ -141,7 +143,7 @@ pub struct StandardOpening {
 impl Opening for StandardOpening {
     ///If the move is illegal under the opening rules returns None. If it is legal, it returns
     /// the color of the piece which will be placed.
-    fn legal_move<R>(game: &Game<R>, m: &Move) -> Option<Color> where R: RuleSet{
+    fn legal_move<R>(&self, game: &Game<R>, m: &Move) -> Option<Color> where R: RuleSet{
         match m {
             &Move::Place(ref kind, tuple) => {
                 if let &PieceKind::Flat = kind {
@@ -162,25 +164,23 @@ impl Opening for StandardOpening {
         }
     }
     ///Returns true if the next ply is considered to be out of the opening
-    fn end_opening<R>(game: &Game<R>) -> bool where R: RuleSet {
-        return game.ply > 0
+    fn is_opening<R>(&self, game: &Game<R>) -> bool where R: RuleSet {
+        return game.ply < 2
     }
 }
 
 pub trait RuleSet {
     ///Makes a move and returns true if a move is valid under this rule set else returns false.
-    fn make_move(&mut self, m: Move) -> (bool) {
+    fn make_move(&mut self, m: Move, color: Color) -> bool {
         if let Move::Place(c, (a, b)) = m {
             if let PieceKind::Cap = c {
                 if self.is_empty((a, b)) && !self.out_of_bounds((a, b)) &&
                     self.has_capstone(self.current_player()) {
-                    let color = self.current_player().color.clone();
                     self.get_mut_tile((a, b)).add_piece(Piece::new(color, c));
                     return true;
                 } else {return false;}
             } else {
                 if self.is_empty((a, b)) && !self.out_of_bounds((a, b)) {
-                    let color = self.current_player().color.clone();
                     self.get_mut_tile((a, b)).add_piece(Piece::new(color, c));
                     return true;
                 }
@@ -516,6 +516,37 @@ impl<R> Game<R> where R: RuleSet {
             ply: 0,
         }
     }
+    pub fn execute_move(&mut self, ptn_string: String) -> bool {
+        let m = match ptn_move(&ptn_string) {
+            Some(m) => m,
+            _ => return false
+        };
+        if self.opening.is_opening(&self) {
+            match self.opening.legal_move(&self, &m) {
+                Some(color) => {
+                    if self.rules.make_move(m, color) {
+                        self.ply += 1;
+                        return true
+                    }
+                    return false
+                },
+                _ => return false
+            }
+        } else {
+            let color = {
+                if self.ply % 2 == 0 {
+                    Color::White
+                } else {
+                    Color::Black
+                }
+            };
+            if self.rules.make_move(m, color) {
+                self.ply += 1;
+                return true
+            }
+            return false
+        }
+    }
 }
 ///Defunct for now...
 ///Right now going with experimental formatting where the first 6 bits will be piece placed or
@@ -632,14 +663,15 @@ pub fn example() {
 
     let vec = vec![String::from("a1"), String::from("a2"), String::from("a3")];
     for m in vec {
-        game.rules.make_move(ptn_move(&m).unwrap());
+        game.rules.make_move(ptn_move(&m).unwrap(), Color::White);
     }
 //    game.rules.make_move(ptn_move(&String::from("c3")).unwrap());
 //    game.rules.make_move(ptn_move(&String::from("a1")).unwrap());
 //    let b = game.rules.make_move(ptn_move(&String::from("1c3-")).unwrap());
-    game.rules.make_move(ptn_move(&String::from("a1+1")).unwrap());
-    game.rules.make_move(ptn_move(&String::from("a3-")).unwrap());
-    game.rules.make_move(ptn_move(&String::from("2a2>11")).unwrap());
+    game.rules.make_move(ptn_move(&String::from("a1+1")).unwrap(), Color::White);
+    game.rules.make_move(ptn_move(&String::from("a3-")).unwrap(), Color::White);
+    game.rules.make_move(ptn_move(&String::from("2a2>11")).unwrap(), Color::White);
+    game.rules.make_move(ptn_move(&String::from("a5")).unwrap(), Color::Black);
 
     println!("{:?}", game.rules.state.board);
 //    let vic = game.rules.check_win();
