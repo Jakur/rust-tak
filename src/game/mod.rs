@@ -132,8 +132,9 @@ pub struct Reached {
 }
 
 pub trait Opening {
-    fn legal_move<R>(&self, state: &Game<R>, m: &Move) -> Option<Color> where R: RuleSet;
-    fn is_opening<R>(&self, game: &Game<R>) -> bool where R: RuleSet;
+    fn legal_move<R, O>(&self, state: &Game<R, O>, m: &Move) -> Option<Color>
+        where R: RuleSet, O: Opening;
+    fn is_opening<R, O>(&self, game: &Game<R, O>) -> bool where R: RuleSet, O: Opening;
 }
 
 pub struct StandardOpening {
@@ -143,7 +144,8 @@ pub struct StandardOpening {
 impl Opening for StandardOpening {
     ///If the move is illegal under the opening rules returns None. If it is legal, it returns
     /// the color of the piece which will be placed.
-    fn legal_move<R>(&self, game: &Game<R>, m: &Move) -> Option<Color> where R: RuleSet{
+    fn legal_move<R, O>(&self, game: &Game<R, O>, m: &Move) -> Option<Color>
+        where R: RuleSet, O: Opening {
         match m {
             &Move::Place(ref kind, tuple) => {
                 if let &PieceKind::Flat = kind {
@@ -164,7 +166,7 @@ impl Opening for StandardOpening {
         }
     }
     ///Returns true if the next ply is considered to be out of the opening
-    fn is_opening<R>(&self, game: &Game<R>) -> bool where R: RuleSet {
+    fn is_opening<R, O>(&self, game: &Game<R, O>) -> bool where R: RuleSet, O: Opening {
         return game.ply < 2
     }
 }
@@ -502,17 +504,17 @@ impl RuleSet for StandardRules {
     }
 }
 
-pub struct Game<R> where R: RuleSet {
+pub struct Game<R, O> where R: RuleSet, O: Opening {
     pub rules: R,
-    pub opening: StandardOpening, //Todo make generic
+    pub opening: O,
     pub ply: u32,
 }
 
-impl<R> Game<R> where R: RuleSet {
-    pub fn new(rules: R) -> Game<R> {
+impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
+    pub fn new(rules: R, opening: O) -> Game<R, O> {
         Game {
             rules,
-            opening: StandardOpening {},
+            opening,
             ply: 0,
         }
     }
@@ -659,7 +661,7 @@ pub fn example() {
         caps: 0,
     };
     let r = StandardRules::new(State::new(5, p1, p2));
-    let mut game = Game::new(r);
+    let mut game = Game::new(r, StandardOpening {});
 
     let vec = vec![String::from("a1"), String::from("a2"), String::from("a3")];
     for m in vec {
