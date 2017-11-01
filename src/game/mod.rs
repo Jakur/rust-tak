@@ -99,7 +99,7 @@ impl fmt::Debug for Tile {
 }
 
 ///Game state contains the board and the players. For reference, a is the first column, 1 is the
-/// first row.
+/// first row. Let player1 be white and player2 be black
 pub struct State {
     pub board: Array2<Tile>,
     pub size: u8,
@@ -175,7 +175,7 @@ pub trait RuleSet {
         if let Move::Place(c, (a, b)) = m {
             if let PieceKind::Cap = c {
                 if self.is_empty((a, b)) && !self.out_of_bounds((a, b)) &&
-                    self.has_capstone(self.current_player()) {
+                    self.has_capstone(self.current_player(color.clone())) {
                     self.get_mut_tile((a, b)).add_piece(Piece::new(color, c));
                     return true;
                 } else {return false;}
@@ -268,7 +268,6 @@ pub trait RuleSet {
                     _ => {panic!("Partially executed move found invalid!")}, //Todo not kill whole program with this.
                 }
             }
-
             true
         }
     }
@@ -281,7 +280,7 @@ pub trait RuleSet {
         }
         false
     }
-    fn check_win(&self) -> Victory {
+    fn check_win(&self, last_to_move: Color) -> Victory {
         let discovered: Rc<RefCell<HashSet<(usize, usize)>>> = Rc::new(RefCell::new(HashSet::new()));
         //This iter generation may be able to be optimized, we'll see
         let iter = self.get_state().board.indexed_iter().
@@ -326,7 +325,7 @@ pub trait RuleSet {
                     black_road = true;
                 }
                 if white_road && black_road {
-                    if let Color::White = self.current_player().color {
+                    if let Color::White = last_to_move {
                         return Victory::White;
                     } else {return Victory::Black;}
                 }
@@ -445,7 +444,12 @@ pub trait RuleSet {
     fn has_capstone(&self, player: &Player) -> bool {
         player.caps > 0
     }
-    fn current_player(&self) -> &Player;
+    fn current_player(&self, color: Color) -> &Player {
+        match color {
+            Color::White => &self.get_state().player1,
+            Color::Black => &self.get_state().player2,
+        }
+    }
     fn get_size(&self) -> u8 {
         self.get_state().size
     }
@@ -489,10 +493,6 @@ impl StandardRules {
 }
 
 impl RuleSet for StandardRules {
-    fn current_player(&self) -> &Player {
-        &self.get_state().player1 //Todo fix this
-    }
-
     fn get_state(&self) -> &State {
         &self.state
     }
