@@ -268,7 +268,7 @@ pub trait RuleSet {
             let mut source_vec = self.get_mut_tile((source.1, source.2)).stack.split_off(source_len - sum as usize);
 
 
-            for val in vec.iter() {
+            for val in vec.iter().rev() {
                 let val = *val as usize;
                 let length = source_vec.len();
                 self.get_mut_tile((x, y)).add_pieces(source_vec.drain(length-val..length).collect());
@@ -720,25 +720,24 @@ pub fn example() {
 //    game.rules.make_move(ptn_move(&String::from("a3-")).unwrap(), Color::White);
 //    game.rules.make_move(ptn_move(&String::from("2a2>11")).unwrap(), Color::White);
 //    game.rules.make_move(ptn_move(&String::from("a5")).unwrap(), Color::Black);
-    game.rules.place_w_flat((1, 1));
-    game.rules.place_b_flat((1, 1));
-    game.rules.place_w_wall((1, 1));
-    println!("{:?}", game.rules.state.board);
-    println!("------------------------");
-    game.rules.make_move(ptn_move(&String::from("3b2>111")).unwrap(), Color::White);
-
-    println!("{:?}", game.rules.state.board);
-//    let ptn = database::read_ptn_file("game.ptn");
-//    let res = database::read_formatted_ptn(ptn.unwrap());
-//    let res = res.unwrap();
-//    println!("{:?}", res.1);
-//    let mut g = res.0;
-//    for m in res.1 {
-//        let output = g.read_move(m);
-//        println!("Ply: {}", g.ply);
-//        println!("{:?}", g.rules.state.board);
-//        if g.ply == 39 {
-//            break;
-//        }
-//    }
+//    game.rules.place_w_flat((1, 1));
+//    game.rules.place_b_flat((1, 1));
+//    game.rules.place_w_wall((1, 1));
+//    println!("{:?}", game.rules.state.board);
+//    println!("------------------------");
+//    game.rules.make_move(ptn_move(&String::from("3b2>111")).unwrap(), Color::White);
+//
+//    println!("{:?}", game.rules.state.board);
+    let ptn = database::read_ptn_file("game.ptn");
+    let res = database::read_formatted_ptn(ptn.unwrap());
+    let res = res.unwrap();
+    println!("{:?}", res.1);
+    let mut g = res.0;
+    for m in res.1 {
+        let output = g.read_move(m);
+        println!("Ply: {}", g.ply);
+        println!("{:?}", g.rules.state.board);
+        assert!(output.0);
+        println!("{:?}", output.1)
+    }
 }
