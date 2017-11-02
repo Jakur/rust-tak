@@ -270,7 +270,8 @@ pub trait RuleSet {
 
             for val in vec.iter() {
                 let val = *val as usize;
-                self.get_mut_tile((x, y)).add_pieces(source_vec.drain(0..val).collect());
+                let length = source_vec.len();
+                self.get_mut_tile((x, y)).add_pieces(source_vec.drain(length-val..length).collect());
                 match data.1 { //Optimize into one match later, if necessary
                     '+' => {x -= 1},
                     '-' => {x += 1},
@@ -719,10 +720,12 @@ pub fn example() {
 //    game.rules.make_move(ptn_move(&String::from("a3-")).unwrap(), Color::White);
 //    game.rules.make_move(ptn_move(&String::from("2a2>11")).unwrap(), Color::White);
 //    game.rules.make_move(ptn_move(&String::from("a5")).unwrap(), Color::Black);
-    game.rules.place_w_flat((2, 2));
-    game.rules.place_b_flat((2, 2));
-    game.rules.make_move(ptn_move(&String::from("2c3>11")).unwrap(), Color::Black);
-
+    game.rules.place_w_flat((1, 1));
+    game.rules.place_b_flat((1, 1));
+    game.rules.place_w_wall((1, 1));
+    println!("{:?}", game.rules.state.board);
+    println!("------------------------");
+    game.rules.make_move(ptn_move(&String::from("3b2>111")).unwrap(), Color::White);
 
     println!("{:?}", game.rules.state.board);
 //    let ptn = database::read_ptn_file("game.ptn");
