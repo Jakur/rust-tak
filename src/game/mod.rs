@@ -5,6 +5,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use regex::Regex;
 
+mod database;
+
 #[derive(Clone)]
 pub enum Color {
     White,
@@ -135,6 +137,7 @@ pub trait Opening {
     fn legal_move<R, O>(&self, state: &Game<R, O>, m: &Move) -> Option<Color>
         where R: RuleSet, O: Opening;
     fn is_opening<R, O>(&self, game: &Game<R, O>) -> bool where R: RuleSet, O: Opening;
+    fn current_color<R, O>(&self, game: &Game<R, O>) -> Color where R: RuleSet, O: Opening;
 }
 
 pub struct StandardOpening {
@@ -168,6 +171,12 @@ impl Opening for StandardOpening {
     ///Returns true if the next ply is considered to be out of the opening
     fn is_opening<R, O>(&self, game: &Game<R, O>) -> bool where R: RuleSet, O: Opening {
         return game.ply < 2
+    }
+    fn current_color<R, O>(&self, game: &Game<R, O>) -> Color where R: RuleSet, O: Opening {
+        match game.rules.current_color(game.ply) {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        }
     }
 }
 
@@ -461,6 +470,13 @@ pub trait RuleSet {
         pos.0 == 0 || pos.0 == (self.get_size()-1) as usize || pos.1 == 0 ||
             pos.1 == (self.get_size()-1) as usize
     }
+    fn current_color(&self, ply: u32) -> Color {
+        if ply % 2 == 0 {
+            Color::White
+        } else {
+            Color::Black
+        }
+    }
 }
 
 pub struct StandardRules {
@@ -512,17 +528,24 @@ pub struct Game<R, O> where R: RuleSet, O: Opening {
 
 impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
     pub fn new(rules: R, opening: O) -> Game<R, O> {
-        Game {
+        Game { //Todo Store ptn
             rules,
             opening,
             ply: 0,
         }
     }
-    pub fn execute_move(&mut self, ptn_string: String) -> bool {
-        let m = match ptn_move(&ptn_string) {
-            Some(m) => m,
-            _ => return false
-        };
+    pub fn read_move(&mut self, m: Move) -> (bool, Victory) {
+        if self.execute_move(m) {
+            if self.opening.is_opening(&self) {
+                return (true, Victory::Neither)
+            } else {
+                return (true, self.rules.check_win(self.current_color()))
+            }
+        } else {
+            return (false, Victory::Neither)
+        }
+    }
+    pub fn execute_move(&mut self, m: Move) -> bool {
         if self.opening.is_opening(&self) {
             match self.opening.legal_move(&self, &m) {
                 Some(color) => {
@@ -547,6 +570,13 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
                 return true
             }
             return false
+        }
+    }
+    pub fn current_color(&self) -> Color {
+        if self.opening.is_opening(&self) {
+            self.opening.current_color(&self)
+        } else {
+            self.rules.current_color(self.ply)
         }
     }
 }
@@ -588,7 +618,7 @@ pub fn byte_ptn(bytes: &[u8]) -> Move {
     }
 }
 
-pub fn ptn_move(string: &String) -> Option<Move> {
+pub fn ptn_move(string: &str) -> Option<Move> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^(\d)?(?i)([CS])?([a-h])([1-8])(([<>+-])([1-8]+)?(\*)?)?$").unwrap();
     }
@@ -642,6 +672,21 @@ fn col_match(string: String) -> u8 {
     }
 }
 
+pub fn make_standard_game(size: usize) -> Game<StandardRules, StandardOpening> {
+    let p1 = Player {
+        color: Color::White,
+        pieces: 21,
+        caps: 1,
+    };
+    let p2 = Player {
+        color: Color::Black,
+        pieces: 21,
+        caps: 1,
+    };
+    let r = StandardRules::new(State::new(5, p1, p2));
+    return Game::new(r, StandardOpening {})
+}
+
 ///Placeholder sandbox testing function
 pub fn example() {
     let string = String::from("4a5>112");
@@ -663,19 +708,34 @@ pub fn example() {
     let r = StandardRules::new(State::new(5, p1, p2));
     let mut game = Game::new(r, StandardOpening {});
 
-    let vec = vec![String::from("a1"), String::from("a2"), String::from("a3")];
-    for m in vec {
-        game.rules.make_move(ptn_move(&m).unwrap(), Color::White);
-    }
+//    let vec = vec![String::from("a1"), String::from("a2"), String::from("a3")];
+//    for m in vec {
+//        game.rules.make_move(ptn_move(&m).unwrap(), Color::White);
+//    }
 //    game.rules.make_move(ptn_move(&String::from("c3")).unwrap());
 //    game.rules.make_move(ptn_move(&String::from("a1")).unwrap());
 //    let b = game.rules.make_move(ptn_move(&String::from("1c3-")).unwrap());
-    game.rules.make_move(ptn_move(&String::from("a1+1")).unwrap(), Color::White);
-    game.rules.make_move(ptn_move(&String::from("a3-")).unwrap(), Color::White);
-    game.rules.make_move(ptn_move(&String::from("2a2>11")).unwrap(), Color::White);
-    game.rules.make_move(ptn_move(&String::from("a5")).unwrap(), Color::Black);
+//    game.rules.make_move(ptn_move(&String::from("a1+1")).unwrap(), Color::White);
+//    game.rules.make_move(ptn_move(&String::from("a3-")).unwrap(), Color::White);
+//    game.rules.make_move(ptn_move(&String::from("2a2>11")).unwrap(), Color::White);
+//    game.rules.make_move(ptn_move(&String::from("a5")).unwrap(), Color::Black);
+    game.rules.place_w_flat((2, 2));
+    game.rules.place_b_flat((2, 2));
+    game.rules.make_move(ptn_move(&String::from("2c3>11")).unwrap(), Color::Black);
+
 
     println!("{:?}", game.rules.state.board);
-//    let vic = game.rules.check_win();
-//    println!("{:?}", vic);
+//    let ptn = database::read_ptn_file("game.ptn");
+//    let res = database::read_formatted_ptn(ptn.unwrap());
+//    let res = res.unwrap();
+//    println!("{:?}", res.1);
+//    let mut g = res.0;
+//    for m in res.1 {
+//        let output = g.read_move(m);
+//        println!("Ply: {}", g.ply);
+//        println!("{:?}", g.rules.state.board);
+//        if g.ply == 39 {
+//            break;
+//        }
+//    }
 }

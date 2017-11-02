@@ -35,7 +35,7 @@ mod tests {
             caps: 0,
         };
         let r = StandardRules::new(State::new(5, p1, p2));
-        let mut game = Game::new(r);
+        let mut game = Game::new(r, StandardOpening {});
         for x in 1..game.rules.state.size {
             game.rules.place_w_flat((0, x));
             game.rules.place_w_flat((1, x));
