@@ -73,7 +73,17 @@ fn decode_playtak_notation(str: &str) -> Vec<Move> {
 fn transform_notation(str: &str) -> String {
     let split_move: Vec<_> = str.split_whitespace().collect();
     match split_move[0] {
-        "P" => {return String::from(split_move[1].to_lowercase())}
+        "P" => {
+            if split_move.len() <= 2 {
+                return String::from(split_move[1].to_lowercase())
+            } else {
+                let mut s = {
+                    if split_move[2] == "C" {String::from("C")} else {String::from("S")}
+                };
+                s.push_str(&split_move[1].to_lowercase());
+                return s;
+            }
+        }
         "M" => {
             let source: Vec<_> = split_move[1].chars().collect();
             let dest: Vec<_> = split_move[2].chars().collect();
