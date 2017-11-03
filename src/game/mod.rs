@@ -728,16 +728,20 @@ pub fn example() {
 //    game.rules.make_move(ptn_move(&String::from("3b2>111")).unwrap(), Color::White);
 //
 //    println!("{:?}", game.rules.state.board);
-    let ptn = database::read_ptn_file("game.ptn");
-    let res = database::read_formatted_ptn(ptn.unwrap());
-    let res = res.unwrap();
-    println!("{:?}", res.1);
-    let mut g = res.0;
-    for m in res.1 {
-        let output = g.read_move(m);
-        println!("Ply: {}", g.ply);
-        println!("{:?}", g.rules.state.board);
-        assert!(output.0);
-        println!("{:?}", output.1)
+//    let ptn = database::read_ptn_file("game.ptn");
+//    let res = database::read_formatted_ptn(ptn.unwrap());
+//    let res = res.unwrap();
+//    println!("{:?}", res.1);
+//    let mut g = res.0;
+//    for m in res.1 {
+//        let output = g.read_move(m);
+//        println!("Ply: {}", g.ply);
+//        println!("{:?}", g.rules.state.board);
+//        assert!(output.0);
+//        println!("{:?}", output.1)
+//    }
+    let (moves, s) = database::get_playtak_game("games_anon.db", 220000);
+    for m in moves {
+        println!("{:?}", m);
     }
 }

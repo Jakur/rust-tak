@@ -7,3 +7,4 @@ authors = ["Justin Kur <JustinK97@hotmail.com>"]
 ndarray = "0.10.0"
 regex = "0.2"
 lazy_static = "0.2"
+sqlite = "0.23.9"

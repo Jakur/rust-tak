@@ -6,6 +6,7 @@ extern crate ndarray;
 extern crate test;
 #[macro_use] extern crate lazy_static;
 extern crate regex;
+extern crate sqlite;
 
 mod game;
 use game::*;
