@@ -26,7 +26,7 @@ pub enum Move {
     Throw((u8, u8, u8), char, Vec<u8>), //Source then direction and quantity
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Victory {
     Neither,
     White,
@@ -187,12 +187,20 @@ pub trait RuleSet {
             if let PieceKind::Cap = c {
                 if self.is_empty((a, b)) && !self.out_of_bounds((a, b)) &&
                     self.has_capstone(self.current_player(color.clone())) {
-                    self.get_mut_tile((a, b)).add_piece(Piece::new(color, c));
+                    self.get_mut_tile((a, b)).add_piece(Piece::new(color.clone(), c));
+                    match color {
+                        Color::White => {self.get_mut_state().player1.caps -= 1},
+                        Color::Black => {self.get_mut_state().player2.caps -= 1}
+                    }
                     return true;
                 } else {return false;}
             } else {
                 if self.is_empty((a, b)) && !self.out_of_bounds((a, b)) {
-                    self.get_mut_tile((a, b)).add_piece(Piece::new(color, c));
+                    self.get_mut_tile((a, b)).add_piece(Piece::new(color.clone(), c));
+                    match color {
+                        Color::White => {self.get_mut_state().player1.pieces -= 1},
+                        Color::Black => {self.get_mut_state().player2.pieces -= 1}
+                    }
                     return true;
                 }
                 return false;
@@ -538,8 +546,11 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
     pub fn read_move(&mut self, m: Move) -> (bool, Victory) {
         if self.execute_move(m) {
             if self.opening.is_opening(&self) {
+                println!("Is opening...");
+                self.ply += 1;
                 return (true, Victory::Neither)
             } else {
+                self.ply += 1;
                 return (true, self.rules.check_win(self.current_color()))
             }
         } else {
@@ -551,7 +562,6 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
             match self.opening.legal_move(&self, &m) {
                 Some(color) => {
                     if self.rules.make_move(m, color) {
-                        self.ply += 1;
                         return true
                     }
                     return false
@@ -567,7 +577,6 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
                 }
             };
             if self.rules.make_move(m, color) {
-                self.ply += 1;
                 return true
             }
             return false
@@ -690,21 +699,21 @@ pub fn make_standard_game(size: usize) -> Game<StandardRules, StandardOpening> {
 
 ///Placeholder sandbox testing function
 pub fn example() {
-    let string = String::from("4a5>112");
-    ptn_move(&String::from("b5"));
-    ptn_move(&string);
-    ptn_move(&String::from("1A5>112"));
-    ptn_move(&String::from("SA5"));
-    ptn_move(&String::from("hello world 4a5>112"));
+//    let string = String::from("4a5>112");
+//    ptn_move(&String::from("b5"));
+//    ptn_move(&string);
+//    ptn_move(&String::from("1A5>112"));
+//    ptn_move(&String::from("SA5"));
+//    ptn_move(&String::from("hello world 4a5>112"));
     let p1 = Player {
         color: Color::White,
-        pieces: 0,
-        caps: 0,
+        pieces: 21,
+        caps: 1,
     };
     let p2 = Player {
         color: Color::Black,
-        pieces: 0,
-        caps: 0,
+        pieces: 21,
+        caps: 1,
     };
     let r = StandardRules::new(State::new(5, p1, p2));
     let mut game = Game::new(r, StandardOpening {});
@@ -740,8 +749,17 @@ pub fn example() {
 //        assert!(output.0);
 //        println!("{:?}", output.1)
 //    }
-    let (moves, s) = database::get_playtak_game("games_anon.db", 220000);
-    for m in moves {
-        println!("{:?}", m);
+    let (mut moves, s) = database::get_playtak_game("games_anon.db", 220000);
+    let last = moves.pop().unwrap();
+    for m in moves.into_iter() {
+//        println!("{:?}", m);
+        let attempt_move = game.read_move(m);
+        assert!(attempt_move.0);
+        assert_eq!(Victory::Neither, attempt_move.1);
     }
+    println!("Last move: {:?}", last);
+    let attempt_move = game.read_move(last);
+    assert!(attempt_move.0);
+    assert_ne!(Victory::Neither, attempt_move.1);
+    println!("Victory: {:?}, Board: \n{:?}", attempt_move.1, game.rules.state.board);
 }
