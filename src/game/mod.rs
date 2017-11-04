@@ -546,7 +546,6 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
     pub fn read_move(&mut self, m: Move) -> (bool, Victory) {
         if self.execute_move(m) {
             if self.opening.is_opening(&self) {
-                println!("Is opening...");
                 self.ply += 1;
                 return (true, Victory::Neither)
             } else {
@@ -715,8 +714,6 @@ pub fn example() {
         pieces: 21,
         caps: 1,
     };
-    let r = StandardRules::new(State::new(5, p1, p2));
-    let mut game = Game::new(r, StandardOpening {});
 
 //    let vec = vec![String::from("a1"), String::from("a2"), String::from("a3")];
 //    for m in vec {
@@ -749,7 +746,9 @@ pub fn example() {
 //        assert!(output.0);
 //        println!("{:?}", output.1)
 //    }
-    let (mut moves, s) = database::get_playtak_game("games_anon.db", 220000);
+    let (mut moves, s, size) = database::get_playtak_game("games_anon.db", 220000);
+    let r = StandardRules::new(State::new(size as u8, p1, p2));
+    let mut game = Game::new(r, StandardOpening {});
     let last = moves.pop().unwrap();
     for m in moves.into_iter() {
 //        println!("{:?}", m);

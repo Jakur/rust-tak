@@ -44,18 +44,19 @@ pub fn read_ptn_file(name_string: &str) -> Result<String, Box<Error>> {
 
 ///Reads a single game from a playtak database, returning the moves and the end of game state, e.g.
 /// F-0. This is used for testing purposes only and, as such, data is assumed to be valid.
-pub fn get_playtak_game(file: &str, id: i64) -> (Vec<Move>, String) {
+pub fn get_playtak_game(file: &str, id: i64) -> (Vec<Move>, String, usize) {
     let connection = sqlite::open(file).unwrap();
-    let mut cursor = connection.prepare("SELECT * FROM games WHERE id = ?").unwrap().cursor();
+    let mut cursor = connection.prepare("SELECT size, notation, result FROM games WHERE id = ?")
+        .unwrap().cursor();
     cursor.bind(&[Value::Integer(id)]).unwrap();
 
     if let Some(row) = cursor.next().unwrap() {
-        println!("id = {}", row[0].as_integer().unwrap());
-        println!("white player = {}", row[3].as_string().unwrap());
-        let server_notation: &str = row[5].as_string().unwrap();
-        return (decode_playtak_notation(server_notation), String::from(row[6].as_string().unwrap()))
+        let size = row[0].as_integer().unwrap() as usize;
+        let server_notation: &str = row[1].as_string().unwrap();
+        return (decode_playtak_notation(server_notation),
+                String::from(row[2].as_string().unwrap()), size)
     } else {
-        return (Vec::new(), String::from(""));
+        return (Vec::new(), String::from(""), 5);
     }
 }
 
