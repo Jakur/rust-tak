@@ -28,8 +28,8 @@ pub enum Move {
 #[derive(Debug, PartialEq)]
 pub enum Victory {
     Neither,
-    White,
-    Black,
+    White(i32),
+    Black(i32),
     Draw,
 }
 
@@ -74,9 +74,10 @@ pub struct Tile {
 
 impl Tile {
     pub fn top(&self) -> Option<&Piece> {
-        match self.stack.get(self.stack.len() - 1) {
-            Some(p) => Some(&p),
-            _ => None,
+        if self.stack.len() == 0 {
+            return None
+        } else {
+            return Some(&self.stack[self.stack.len() - 1])
         }
     }
     fn top_unchecked(&self) -> &Piece {
@@ -109,7 +110,25 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(size: u8, player1: Player, player2: Player) -> State {
+    pub fn new(size: u8) -> State {
+        let (pieces, caps) = {
+            match size {
+                3 => (10, 0),
+                4 => (15, 0),
+                5 => (21, 1),
+                6 => (30, 1),
+                8 => (50, 2),
+                _ => (21, 1), //Default 5
+            }
+        };
+        State {
+            board: Array2::default((size as usize, size as usize)),
+            size,
+            player1: Player::new(Color::White, pieces, caps),
+            player2: Player::new(Color::Black, pieces, caps),
+        }
+    }
+    pub fn new_with_players(size: u8, player1: Player, player2: Player) -> State {
         State {
             board: Array2::default((size as usize, size as usize)),
             size,
@@ -123,6 +142,16 @@ pub struct Player {
     pub color: Color,
     pub pieces: i32,
     pub caps: i32,
+}
+
+impl Player {
+    pub fn new(color: Color, pieces: i32, caps: i32) -> Player {
+        Player {
+            color,
+            pieces,
+            caps,
+        }
+    }
 }
 
 pub struct Reached {
@@ -345,15 +374,15 @@ pub trait RuleSet {
                 }
                 if white_road && black_road {
                     if let Color::White = last_to_move {
-                        return Victory::White;
-                    } else {return Victory::Black;}
+                        return Victory::White(0);
+                    } else {return Victory::Black(0);}
                 }
             }
         }
         if white_road {
-            return Victory::White
+            return Victory::White(0)
         } else if black_road {
-            return Victory::Black
+            return Victory::Black(0)
         }
         //Out of pieces check for both players
         if self.get_state().player1.pieces == 0 || self.get_state().player2.pieces == 0 {
@@ -431,10 +460,26 @@ pub trait RuleSet {
             }
         }
 
-        return self.search(white_start, r.clone(), set.clone(), (node.0 + 1, node.1)) ||
-            self.search(white_start, r.clone(), set.clone(), (node.0, node.1 + 1)) ||
-            self.search(white_start, r.clone(), set.clone(), (node.0, node.1 - 1)) ||
-            self.search(white_start, r.clone(), set.clone(), (node.0 - 1, node.1));
+        //Check for usize underflow and then recurse accordingly
+        if node.0 == 0 {
+            if node.1 == 0 {
+                return self.search(white_start, r.clone(), set.clone(), (node.0 + 1, node.1)) ||
+                    self.search(white_start, r.clone(), set.clone(), (node.0, node.1 + 1))
+            } else {
+                return self.search(white_start, r.clone(), set.clone(), (node.0 + 1, node.1)) ||
+                    self.search(white_start, r.clone(), set.clone(), (node.0, node.1 + 1)) ||
+                    self.search(white_start, r.clone(), set.clone(), (node.0, node.1 - 1))
+            }
+        } else if node.1 == 0 {
+            return self.search(white_start, r.clone(), set.clone(), (node.0 + 1, node.1)) ||
+                self.search(white_start, r.clone(), set.clone(), (node.0, node.1 + 1)) ||
+                self.search(white_start, r.clone(), set.clone(), (node.0 - 1, node.1));
+        } else {
+            return self.search(white_start, r.clone(), set.clone(), (node.0 + 1, node.1)) ||
+                self.search(white_start, r.clone(), set.clone(), (node.0, node.1 + 1)) ||
+                self.search(white_start, r.clone(), set.clone(), (node.0, node.1 - 1)) ||
+                self.search(white_start, r.clone(), set.clone(), (node.0 - 1, node.1));
+        }
     }
     ///Evaluates the result of the game if it goes to a flat count.
     fn flat_game(&self) -> Victory {
@@ -448,9 +493,9 @@ pub trait RuleSet {
             }
         }
         if white > black {
-            return Victory::White;
+            return Victory::White(white);
         } else if black > white {
-            return Victory::Black;
+            return Victory::Black(black);
         }
         return Victory::Draw;
     }

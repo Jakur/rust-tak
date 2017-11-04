@@ -56,7 +56,7 @@ pub fn get_playtak_game(file: &str, id: i64) -> (Vec<Move>, String, usize) {
         return (decode_playtak_notation(server_notation),
                 String::from(row[2].as_string().unwrap()), size)
     } else {
-        return (Vec::new(), String::from(""), 5);
+        return (Vec::new(), String::from("0-0"), 5);
     }
 }
 
