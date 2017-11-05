@@ -70,10 +70,6 @@ pub fn ptn_move(string: &str) -> Option<Move> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^(\d)?(?i)([CS])?([a-h])([1-8])(([<>+-])([1-8]+)?(\*)?)?$").unwrap();
     }
-//    let res = RE.captures_iter(string);
-//    for r in res {
-//        println!("{:?}", r);
-//    }
     let res = RE.captures(string);
     let res = match res {
         Some(x) => x,

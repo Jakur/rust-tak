@@ -3,7 +3,6 @@ use ndarray::Array2;
 use std::collections::HashSet;
 use std::cell::RefCell;
 use std::rc::Rc;
-use regex::Regex;
 use super::Game;
 
 #[derive(Clone)]

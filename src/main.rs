@@ -39,8 +39,30 @@ mod tests {
     }
 
     #[test]
+    fn test_illegal_cases() {
+        fn execute<R, O>(game: &mut Game<R, O>, vec: Vec<&str>) where R: RuleSet, O: Opening {
+            let moves = vec.into_iter().map(|m| ptn_move(m).unwrap());
+            moves.for_each(|m| {game.execute_move(m); ()});
+        }
+        fn assert_illegal<R, O>(game: &mut Game<R, O>, str: &str) where R: RuleSet, O: Opening {
+            assert!(!game.execute_move(ptn_move(str).unwrap()));
+        }
+        let r = StandardRules::new(State::new(5));
+        let mut game = Game::new(r, StandardOpening {});
+        execute(&mut game, vec!["a5", "a1", "b1", "c1", "b2", "c2", "b3", "c3", "Cb4", "Cb5"]);
+        assert_illegal(&mut game, "b4+"); //Cap cannot flatten cap
+        execute(&mut game, vec!["a3", "c3<", "b4-", "Sd3"]);
+        assert_illegal(&mut game, "3b3>111"); //pass through wall
+        assert_illegal(&mut game,"3b3>12"); //crush wall with more than one piece in hand
+        assert_illegal(&mut game, "d3-"); //move piece active player doesn't control
+        assert_illegal(&mut game, "a3<"); //move piece off board
+        assert_illegal(&mut game, "Sd3"); //place on top of existing piece
+        assert_illegal(&mut game, "Ce1"); //place cap that player doesn't have
+    }
+
+    #[test]
     fn test_many_playtak_games() {
-        for id in 220000..220586 { //220586
+        for id in 220500..220586 { //Verified 150k - 220586
             let (mut moves, res, size) = game::database::get_playtak_game("games_anon.db", 220000);
             let r = StandardRules::new(State::new(size as u8));
             let mut game = Game::new(r, StandardOpening {});
