@@ -1,5 +1,5 @@
 [package]
-name = "tak_server"
+name = "rust-tak"
 version = "0.1.0"
 authors = ["Justin Kur <JustinK97@hotmail.com>"]
 

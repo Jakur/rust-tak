@@ -8,12 +8,8 @@ extern crate test;
 extern crate regex;
 extern crate sqlite;
 
-mod game;
+pub mod game;
 use game::*;
-
-fn main() {
-    game::example();
-}
 
 #[cfg(test)]
 mod tests {
