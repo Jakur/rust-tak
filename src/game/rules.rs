@@ -20,8 +20,8 @@ pub enum PieceKind {
 
 #[derive(Debug)]
 pub enum Move {
-    Place(PieceKind, (u8, u8)),
-    Throw((u8, u8, u8), char, Vec<u8>), //Source then direction and quantity
+    Place(PieceKind, (u8, u8), String),
+    Throw((u8, u8, u8), char, Vec<u8>, String), //Source then direction and quantity then ptn
 }
 
 #[derive(Debug, PartialEq)]
@@ -106,6 +106,7 @@ pub struct State {
     pub size: u8,
     pub player1: Player,
     pub player2: Player,
+    pub notation: Vec<String>,
 }
 
 impl State {
@@ -125,6 +126,7 @@ impl State {
             size,
             player1: Player::new(Color::White, pieces, caps),
             player2: Player::new(Color::Black, pieces, caps),
+            notation: Vec::new(),
         }
     }
     pub fn new_with_players(size: u8, player1: Player, player2: Player) -> State {
@@ -133,6 +135,7 @@ impl State {
             size,
             player1,
             player2,
+            notation: Vec::new(),
         }
     }
 }
@@ -177,7 +180,7 @@ impl Opening for StandardOpening {
     fn legal_move<R, O>(&self, game: &Game<R, O>, m: &Move) -> Option<Color>
         where R: RuleSet, O: Opening {
         match m {
-            &Move::Place(ref kind, tuple) => {
+            &Move::Place(ref kind, tuple, _) => {
                 if let &PieceKind::Flat = kind {
                     if game.rules.out_of_bounds(tuple) {
                         return None
@@ -210,7 +213,7 @@ impl Opening for StandardOpening {
 pub trait RuleSet {
     ///Makes a move and returns true if a move is valid under this rule set else returns false.
     fn make_move(&mut self, m: Move, color: Color) -> bool {
-        if let Move::Place(c, (a, b)) = m {
+        if let Move::Place(c, (a, b), ptn) = m {
             if let PieceKind::Cap = c {
                 if self.is_empty((a, b)) && !self.out_of_bounds((a, b)) &&
                     self.has_capstone(self.current_player(color.clone())) {
@@ -219,6 +222,7 @@ pub trait RuleSet {
                         Color::White => {self.get_mut_state().player1.caps -= 1},
                         Color::Black => {self.get_mut_state().player2.caps -= 1}
                     }
+                    self.add_notation(ptn);
                     return true;
                 } else {return false;}
             } else {
@@ -228,27 +232,26 @@ pub trait RuleSet {
                         Color::White => {self.get_mut_state().player1.pieces -= 1},
                         Color::Black => {self.get_mut_state().player2.pieces -= 1}
                     }
+                    self.add_notation(ptn);
                     return true;
                 }
                 return false;
             }
         } else { //Stack throw
-            let data = match m {
-                Move::Throw(source, dir, vec) => (source, dir, vec),
+            let (source, dir, vec, ptn) = match m {
+                Move::Throw(source, dir, vec, ptn) => (source, dir, vec, ptn),
                 _ => { return false } //This should not happen
             };
-            let source= data.0;
             if source.0 > self.get_size() { //Picked up too many pieces
                 return false;
             }
-            let vec = data.2;
             if vec.len() < 1 || self.get_tile((source.1, source.2)).is_empty() {
                 return false;
             }
-            let mut x = (data.0).1;
-            let mut y = (data.0).2;
+            let mut x = source.1;
+            let mut y = source.2;
             //Check if the farthest target is on the board, usize is Copy so no problems here
-            match data.1 {
+            match dir {
                 '+' => {x += vec.len() as u8},
                 '-' => {x -= vec.len() as u8},
                 '<' => {y -= vec.len() as u8},
@@ -278,11 +281,11 @@ pub trait RuleSet {
                     }
                 }
             }
-            x = (data.0).1;
-            y = (data.0).2;
+            x = source.1;
+            y = source.2;
             let mut sum = 0;
             for val in vec.iter() {
-                match data.1 { //Optimize into one match later, if necessary
+                match dir { //Optimize into one match later, if necessary
                     '+' => {x += 1},
                     '-' => {x -= 1},
                     '<' => {y -= 1},
@@ -307,7 +310,7 @@ pub trait RuleSet {
                 let val = *val as usize;
                 let length = source_vec.len();
                 self.get_mut_tile((x, y)).add_pieces(source_vec.drain(length-val..length).collect());
-                match data.1 { //Optimize into one match later, if necessary
+                match dir { //Optimize into one match later, if necessary
                     '+' => {x -= 1},
                     '-' => {x += 1},
                     '<' => {y += 1},
@@ -315,7 +318,8 @@ pub trait RuleSet {
                     _ => {panic!("Partially executed move found invalid!")}, //Todo not kill whole program with this.
                 }
             }
-            true
+            self.add_notation(ptn);
+            return true
         }
     }
     fn is_empty(&self, index: (u8, u8)) -> bool {
@@ -528,6 +532,9 @@ pub trait RuleSet {
         } else {
             Color::Black
         }
+    }
+    fn add_notation(&mut self, string: String) {
+        self.get_mut_state().notation.push(string);
     }
 }
 

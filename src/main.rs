@@ -62,7 +62,7 @@ mod tests {
 
     #[test]
     fn test_many_playtak_games() {
-        for id in 220500..220586 { //Verified 150k - 220586
+        for id in 220000..220586 { //Verified 150k - 220586
             let (mut moves, res, size) = game::database::get_playtak_game("games_anon.db", 220000);
             let r = StandardRules::new(State::new(size as u8));
             let mut game = Game::new(r, StandardOpening {});

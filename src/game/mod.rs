@@ -13,7 +13,7 @@ pub struct Game<R, O> where R: RuleSet, O: Opening {
 
 impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
     pub fn new(rules: R, opening: O) -> Game<R, O> {
-        Game { //Todo Store ptn
+        Game {
             rules,
             opening,
             ply: 0,
@@ -84,7 +84,7 @@ pub fn ptn_move(string: &str) -> Option<Move> {
                 (res.get(1).map_or(1, |x| x.as_str().parse::<u8>().unwrap_or(1)),
                  res.get(4).map_or(0, |m| m.as_str().parse::<u8>().unwrap_or(1)-1),
                  col_match(res.get(3).map_or(String::from(""), |m| m.as_str().to_lowercase()))),
-                dir, vec))
+                dir, vec, String::from(string)))
         }
         None => { //place
             let kind = match res.get(2).map_or("", |m| m.as_str()) {
@@ -96,7 +96,8 @@ pub fn ptn_move(string: &str) -> Option<Move> {
             };
             return Some(Move::Place(kind, (res.get(4).map_or(0, |m| m.as_str().parse::<u8>().unwrap_or(1)-1),
                                            col_match(res.get(3).map_or(String::from(""),
-                                                                       |m| m.as_str().to_lowercase())))));
+                                                                       |m| m.as_str().to_lowercase()))),
+                                    String::from(string)));
         }
     }
 }
@@ -140,4 +141,7 @@ pub fn example() {
         assert_ne!(Victory::Neither, attempt_move.1);
     }
     println!("Victory: {:?}", attempt_move.1);
+    for x in game.rules.state.notation {
+        println!("{}", x);
+    }
 }
