@@ -16,6 +16,18 @@ mod tests {
     use super::*;
     use test::Bencher;
 
+    #[test]
+    fn display_test() {
+        let (mut moves, res, size) = game::database::get_playtak_game("games_anon.db", 220000);
+        let r = StandardRules::new(State::new(size as u8));
+        let mut game = Game::new(r, StandardOpening {});
+        for m in moves.into_iter() {
+            let attempt_move = game.read_move(m);
+            assert!(attempt_move.0);
+        }
+        game.print_board();
+    }
+
     #[bench]
     fn search_bench(b: &mut Bencher) {
         use game::Color;
@@ -38,16 +50,17 @@ mod tests {
     fn test_illegal_cases() {
         fn execute<R, O>(game: &mut Game<R, O>, vec: Vec<&str>) where R: RuleSet, O: Opening {
             let moves = vec.into_iter().map(|m| ptn_move(m).unwrap());
-            moves.for_each(|m| {game.execute_move(m); ()});
+            moves.for_each(|m| {game.read_move(m); ()});
         }
-        fn assert_illegal<R, O>(game: &mut Game<R, O>, str: &str) where R: RuleSet, O: Opening {
-            assert!(!game.execute_move(ptn_move(str).unwrap()));
+        fn assert_illegal<R, O>(game: &mut Game<R, O>, string: &str) where R: RuleSet, O: Opening {
+            assert!(!game.read_move(ptn_move(string).unwrap()).0);
         }
         let r = StandardRules::new(State::new(5));
         let mut game = Game::new(r, StandardOpening {});
         execute(&mut game, vec!["a5", "a1", "b1", "c1", "b2", "c2", "b3", "c3", "Cb4", "Cb5"]);
         assert_illegal(&mut game, "b4+"); //Cap cannot flatten cap
         execute(&mut game, vec!["a3", "c3<", "b4-", "Sd3"]);
+        game.print_board();
         assert_illegal(&mut game, "3b3>111"); //pass through wall
         assert_illegal(&mut game,"3b3>12"); //crush wall with more than one piece in hand
         assert_illegal(&mut game, "d3-"); //move piece active player doesn't control

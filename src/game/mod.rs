@@ -12,6 +12,7 @@ pub struct Game<R, O> where R: RuleSet, O: Opening {
 }
 
 impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
+    ///Creates a new game, consuming a given rule set and opening
     pub fn new(rules: R, opening: O) -> Game<R, O> {
         Game {
             rules,
@@ -19,6 +20,8 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
             ply: 0,
         }
     }
+    ///Attempts to execute a given move. Returns a tuple containing first whether or not the move
+    /// was successfully executed and second the victory condition of the board state.
     pub fn read_move(&mut self, m: Move) -> (bool, Victory) {
         if self.execute_move(m) {
             if self.opening.is_opening(&self) {
@@ -32,7 +35,7 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
             return (false, Victory::Neither)
         }
     }
-    pub fn execute_move(&mut self, m: Move) -> bool {
+    fn execute_move(&mut self, m: Move) -> bool {
         if self.opening.is_opening(&self) {
             match self.opening.legal_move(&self, &m) {
                 Some(color) => {
@@ -57,12 +60,15 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
             return false
         }
     }
+    ///Returns the color of player whose move it is. Note that this may be distinct from the color
+    /// of the piece which is being played, as in the opening for a standard game of Tak.
     pub fn current_color(&self) -> Color {
-        if self.opening.is_opening(&self) {
-            self.opening.current_color(&self)
-        } else {
-            self.rules.current_color(self.ply)
-        }
+        self.rules.current_color(self.ply)
+    }
+    ///Prints the board with the most relevant board state information
+    pub fn print_board(&self) {
+        println!("{}", self.rules.get_state());
+        println!("--------------------\n");
     }
 }
 
@@ -116,32 +122,8 @@ fn col_match(string: String) -> u8 {
         _ => 0,
     }
 }
-
+///Creates
 pub fn make_standard_game(size: usize) -> Game<StandardRules, StandardOpening> {
     let r = StandardRules::new(State::new(5));
     return Game::new(r, StandardOpening {})
-}
-
-///Placeholder sandbox testing function
-pub fn example() {
-
-    let (mut moves, res, size) = database::get_playtak_game("games_anon.db", 220000);
-    let r = StandardRules::new(State::new(size as u8));
-    let mut game = Game::new(r, StandardOpening {});
-    let last = moves.pop().unwrap();
-    for m in moves.into_iter() {
-        let attempt_move = game.read_move(m);
-        assert!(attempt_move.0);
-        assert_eq!(Victory::Neither, attempt_move.1);
-    }
-    println!("Last move: {:?}", last);
-    let attempt_move = game.read_move(last);
-    assert!(attempt_move.0);
-    if res != "0-0" {
-        assert_ne!(Victory::Neither, attempt_move.1);
-    }
-    println!("Victory: {:?}", attempt_move.1);
-    for x in game.rules.state.notation {
-        println!("{}", x);
-    }
 }

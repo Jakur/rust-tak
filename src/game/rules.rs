@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use super::Game;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Color {
     White,
     Black,
@@ -99,6 +99,12 @@ impl fmt::Debug for Tile {
     }
 }
 
+impl fmt::Display for Tile {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.stack)
+    }
+}
+
 ///Game state contains the board and the players. For reference, a is the first column, 1 is the
 /// first row. Let player1 be white and player2 be black
 pub struct State {
@@ -137,6 +143,26 @@ impl State {
             player2,
             notation: Vec::new(),
         }
+    }
+}
+
+impl fmt::Display for State {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut string = String::from("");
+        if self.notation.len() % 2 == 0 {
+            string.push_str("White to move: \n");
+        } else {
+            string.push_str("Black to move: \n");
+        }
+        for i in 0..self.size as usize {
+            for j in 0..self.size as usize {
+                string.push_str(&self.board.get((self.size as usize - i - 1, j))
+                    .unwrap().to_string());
+            }
+            string.push_str("\n");
+        }
+        write!(f, "{}\nWhite: ({}, {}) Black: ({}, {})", &string, self.player1.pieces,
+               self.player1.caps, self.player2.pieces, self.player2.caps)
     }
 }
 
@@ -202,6 +228,7 @@ impl Opening for StandardOpening {
     fn is_opening<R, O>(&self, game: &Game<R, O>) -> bool where R: RuleSet, O: Opening {
         return game.ply < 2
     }
+    ///Returns the color of the piece that will be placed during this ply
     fn current_color<R, O>(&self, game: &Game<R, O>) -> Color where R: RuleSet, O: Opening {
         match game.rules.current_color(game.ply) {
             Color::White => Color::Black,
@@ -245,16 +272,23 @@ pub trait RuleSet {
             if source.0 > self.get_size() { //Picked up too many pieces
                 return false;
             }
-            if vec.len() < 1 || self.get_tile((source.1, source.2)).is_empty() {
-                return false;
+            {
+                let source_tile = self.get_tile((source.1, source.2));
+                if vec.len() < 1 || source_tile.is_empty() { //Moving from an empty tile
+                    return false;
+                }
+                if color != source_tile.top().unwrap().color { //Moving a stack we don't control
+                    return false
+                }
             }
             let mut x = source.1;
             let mut y = source.2;
+
             //Check if the farthest target is on the board, usize is Copy so no problems here
             match dir {
                 '+' => {x += vec.len() as u8},
-                '-' => {x -= vec.len() as u8},
-                '<' => {y -= vec.len() as u8},
+                '-' => {if x as usize >= vec.len() {x -= vec.len() as u8} else {return false}},
+                '<' => {if y as usize >= vec.len() {y -= vec.len() as u8} else {return false}},
                 '>' => {y += vec.len() as u8},
                 _ => {return false}, //Invalid
             }
@@ -269,8 +303,8 @@ pub trait RuleSet {
                 if !last_tile.stack.is_empty() {
                     match last_tile.top_unchecked().kind {
                         PieceKind::Wall => { //Check for valid crush
-                            if let PieceKind::Cap = self.get_tile((source.0, source.1))
-                                .top_unchecked().kind {
+                            if let PieceKind::Cap = self.get_tile((source.1, source.2))
+                                .top().unwrap().kind {
                                 if vec[vec.len() - 1] != 1 {return false} //Only the Cap can crush
                             } else {return false}
                         },
