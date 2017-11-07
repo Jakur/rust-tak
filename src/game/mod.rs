@@ -47,13 +47,7 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
                 _ => return false
             }
         } else {
-            let color = {
-                if self.ply % 2 == 0 {
-                    Color::White
-                } else {
-                    Color::Black
-                }
-            };
+            let color = self.current_color();
             if self.rules.make_move(m, color) {
                 return true
             }

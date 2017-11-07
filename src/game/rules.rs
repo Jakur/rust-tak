@@ -269,7 +269,7 @@ pub trait RuleSet {
                 Move::Throw(source, dir, vec, ptn) => (source, dir, vec, ptn),
                 _ => { return false } //This should not happen
             };
-            if source.0 > self.get_size() { //Picked up too many pieces
+            if source.0 > self.get_size() || self.out_of_bounds((source.1, source.2)) {
                 return false;
             }
             {
