@@ -1,7 +1,7 @@
 use regex::Regex;
 
 pub mod database;
-mod rules;
+pub mod rules;
 
 pub use self::rules::*;
 
@@ -66,6 +66,8 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
     }
 }
 
+///Transforms a ptn string into a Move that can be understood by the server, or None if the given
+/// string was deemed an invalid ptn string.
 pub fn ptn_move(string: &str) -> Option<Move> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^(\d)?(?i)([CS])?([a-h])([1-8])(([<>+-])([1-8]+)?(\*)?)?$").unwrap();
@@ -116,7 +118,7 @@ fn col_match(string: String) -> u8 {
         _ => 0,
     }
 }
-///Creates
+///Creates a game with standard rules and a standard opening of the given size
 pub fn make_standard_game(size: usize) -> Game<StandardRules, StandardOpening> {
     let r = StandardRules::new(State::new(5));
     return Game::new(r, StandardOpening {})

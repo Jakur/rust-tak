@@ -68,7 +68,7 @@ impl fmt::Debug for Piece {
 
 #[derive(Default)]
 pub struct Tile {
-    stack: Vec<Piece>,
+    pub stack: Vec<Piece>,
 }
 
 impl Tile {

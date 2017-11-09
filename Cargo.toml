@@ -1,6 +1,6 @@
 [package]
 name = "rust-tak"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Justin Kur <JustinK97@hotmail.com>"]
 
 [dependencies]
