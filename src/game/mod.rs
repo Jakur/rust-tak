@@ -4,6 +4,7 @@ pub mod database;
 pub mod rules;
 
 pub use self::rules::*;
+use ndarray::Array2;
 
 pub struct Game<R, O> where R: RuleSet, O: Opening {
     pub rules: R,
@@ -63,6 +64,18 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
     pub fn print_board(&self) {
         println!("{}", self.rules.get_state());
         println!("--------------------\n");
+    }
+
+    pub fn get_state(&self) -> &State {
+        self.rules.get_state()
+    }
+
+    pub fn get_mut_state(&mut self) -> &mut State {
+        self.rules.get_mut_state()
+    }
+
+    pub fn get_board(&self) -> &Array2<Tile> {
+        &self.rules.get_state().board
     }
 }
 
