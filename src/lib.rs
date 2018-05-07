@@ -6,19 +6,23 @@ extern crate ndarray;
 extern crate test;
 #[macro_use] extern crate lazy_static;
 extern crate regex;
+
+#[cfg(test)]
 extern crate sqlite;
 
 pub mod game;
-use game::*;
 
 #[cfg(test)]
 mod tests {
+    use game::*;
     use super::*;
     use test::Bencher;
+    use sqlite;
+    use sqlite::Value;
 
     #[test]
     fn display_test() {
-        let (mut moves, res, size) = game::database::get_playtak_game("games_anon.db", 220000);
+        let (mut moves, res, size) = get_playtak_game("games_anon.db", 220000);
         let r = StandardRules::new(State::new(size as u8));
         let mut game = Game::new(r, StandardOpening {});
         for m in moves.into_iter() {
@@ -72,7 +76,7 @@ mod tests {
     #[test]
     fn test_many_playtak_games() {
         for id in 220000..220586 { //Verified 150k - 220586
-            let (mut moves, res, size) = game::database::get_playtak_game("games_anon.db", 220000);
+            let (mut moves, res, size) = get_playtak_game("games_anon.db", 220000);
             let r = StandardRules::new(State::new(size as u8));
             let mut game = Game::new(r, StandardOpening {});
             let last = moves.pop().unwrap();
@@ -112,6 +116,24 @@ mod tests {
                 "1/2-1/2" => assert_eq!(Victory::Draw, attempt_move.1),
                 _ => assert!(false),
             }
+        }
+    }
+
+    ///Reads a single game from a playtak database, returning the moves and the end of game state, e.g.
+    /// F-0. This is used for testing purposes only and, as such, data is assumed to be valid.
+    fn get_playtak_game(file: &str, id: i64) -> (Vec<Move>, String, usize) {
+        let connection = sqlite::open(file).unwrap();
+        let mut cursor = connection.prepare("SELECT size, notation, result FROM games WHERE id = ?")
+            .unwrap().cursor();
+        cursor.bind(&[Value::Integer(id)]).unwrap();
+
+        if let Some(row) = cursor.next().unwrap() {
+            let size = row[0].as_integer().unwrap() as usize;
+            let server_notation: &str = row[1].as_string().unwrap();
+            return (game::database::decode_playtak_notation(server_notation),
+                    String::from(row[2].as_string().unwrap()), size)
+        } else {
+            return (Vec::new(), String::from("0-0"), 5);
         }
     }
 }

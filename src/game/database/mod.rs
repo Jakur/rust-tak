@@ -1,8 +1,6 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::error::Error;
-use sqlite;
-use sqlite::Value;
 
 use super::Move;
 use super::Game;
@@ -42,25 +40,7 @@ pub fn read_ptn_file(name_string: &str) -> Result<String, Box<Error>> {
     return Ok(out_string)
 }
 
-///Reads a single game from a playtak database, returning the moves and the end of game state, e.g.
-/// F-0. This is used for testing purposes only and, as such, data is assumed to be valid.
-pub fn get_playtak_game(file: &str, id: i64) -> (Vec<Move>, String, usize) {
-    let connection = sqlite::open(file).unwrap();
-    let mut cursor = connection.prepare("SELECT size, notation, result FROM games WHERE id = ?")
-        .unwrap().cursor();
-    cursor.bind(&[Value::Integer(id)]).unwrap();
-
-    if let Some(row) = cursor.next().unwrap() {
-        let size = row[0].as_integer().unwrap() as usize;
-        let server_notation: &str = row[1].as_string().unwrap();
-        return (decode_playtak_notation(server_notation),
-                String::from(row[2].as_string().unwrap()), size)
-    } else {
-        return (Vec::new(), String::from("0-0"), 5);
-    }
-}
-
-fn decode_playtak_notation(str: &str) -> Vec<Move> {
+pub fn decode_playtak_notation(str: &str) -> Vec<Move> {
     let moves = str.split(",");
     let mut vec = Vec::new();
     for m in moves {
