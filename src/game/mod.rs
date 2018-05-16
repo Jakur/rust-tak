@@ -77,6 +77,10 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
     pub fn get_board(&self) -> &Array2<Tile> {
         &self.rules.get_state().board
     }
+
+    pub fn get_size(&self) -> usize {
+        self.rules.get_state().size as usize
+    }
 }
 
 ///Transforms a ptn string into a Move that can be understood by the server, or None if the given
