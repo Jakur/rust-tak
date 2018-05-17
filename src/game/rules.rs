@@ -296,7 +296,7 @@ pub trait RuleSet {
             }
             //Delay reset x, y
             //Check the last position in the throw vector for special case wall crush
-            {
+            let (last_x, last_y) = {
                 let last_tile = self.get_tile((x, y));
                 //We assume the vec to be in normal stack order.
                 if !last_tile.stack.is_empty() {
@@ -304,7 +304,9 @@ pub trait RuleSet {
                         PieceKind::Wall => { //Check for valid crush
                             if let PieceKind::Cap = self.get_tile((source.1, source.2))
                                 .top().unwrap().kind {
-                                if vec[vec.len() - 1] != 1 {return false} //Only the Cap can crush
+                                if vec[vec.len() - 1] != 1 {
+                                    return false //Only the Cap can crush
+                                }
                             } else {return false}
                         },
                         PieceKind::Cap => { //Cannot end throw on a Cap either
@@ -313,7 +315,8 @@ pub trait RuleSet {
                         _ => {},
                     }
                 }
-            }
+                (x, y)
+            };
             x = source.1;
             y = source.2;
             let mut sum = 0;
@@ -325,12 +328,17 @@ pub trait RuleSet {
                     '>' => {y += 1},
                     _ => {return false}, //Invalid
                 }
-                match self.get_tile((x, y)).top() {
-                    Some(p) => {match p.kind {
-                        PieceKind::Flat => {},
-                        _ => {return false}
-                    }}
-                    _ => {},
+                if !(x == last_x && y == last_y) { //Already checked the last tile
+                    match self.get_tile((x, y)).top() {
+                        Some(p) => {
+                            match p.kind {
+                                PieceKind::Flat => {
+
+                                },
+                                _ => {return false}
+                            }}
+                        _ => {},
+                    }
                 }
                 sum += *val;
             }

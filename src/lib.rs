@@ -119,6 +119,24 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_crush() {
+        let ptn_moves = vec!["a5", "a1", "b1", "Sb5", "Cc2", "e5", "b3", "b2", "b3-",
+            "d4", "c2<", "c5"];
+        let game_moves = ptn_moves.into_iter().map(|m| game::ptn_move(m).expect("Valid ptn"));
+        let mut game = make_standard_game(5, 0);
+        for m in game_moves {
+            let (valid, victory) = game.read_move(m);
+            assert!(valid);
+            assert_eq!(victory, Victory::Neither);
+        }
+        let crush = game::ptn_move("3b2+111").expect("Valid ptn");
+        println!("{:?}", crush);
+        let (valid, victory) = game.read_move(crush);
+        assert!(valid);
+        assert_eq!(victory, Victory::Neither);
+    }
+
     ///Reads a single game from a playtak database, returning the moves and the end of game state, e.g.
     /// F-0. This is used for testing purposes only and, as such, data is assumed to be valid.
     fn get_playtak_game(file: &str, id: i64) -> (Vec<Move>, String, usize) {
