@@ -23,7 +23,7 @@ mod tests {
     #[test]
     fn display_test() {
         let (mut moves, res, size) = get_playtak_game("games_anon.db", 220000);
-        let r = StandardRules::new(State::new(size as u8));
+        let r = StandardRules::new(State::new(size as u8), 0);
         let mut game = Game::new(r, StandardOpening {});
         for m in moves.into_iter() {
             let attempt_move = game.read_move(m);
@@ -37,7 +37,7 @@ mod tests {
         use game::Color;
         use game::Player;
         use game::RuleSet;
-        let r = StandardRules::new(State::new(5));
+        let r = StandardRules::new(State::new(5), 0);
         let mut game = Game::new(r, StandardOpening {});
         for x in 1..game.rules.state.size {
             game.rules.place_w_flat((0, x));
@@ -59,7 +59,7 @@ mod tests {
         fn assert_illegal<R, O>(game: &mut Game<R, O>, string: &str) where R: RuleSet, O: Opening {
             assert!(!game.read_move(ptn_move(string).unwrap()).0);
         }
-        let r = StandardRules::new(State::new(5));
+        let r = StandardRules::new(State::new(5), 0);
         let mut game = Game::new(r, StandardOpening {});
         execute(&mut game, vec!["a5", "a1", "b1", "c1", "b2", "c2", "b3", "c3", "Cb4", "Cb5"]);
         assert_illegal(&mut game, "b4+"); //Cap cannot flatten cap
@@ -77,7 +77,7 @@ mod tests {
     fn test_many_playtak_games() {
         for id in 220000..220586 { //Verified 150k - 220586
             let (mut moves, res, size) = get_playtak_game("games_anon.db", 220000);
-            let r = StandardRules::new(State::new(size as u8));
+            let r = StandardRules::new(State::new(size as u8), 0);
             let mut game = Game::new(r, StandardOpening {});
             let last = moves.pop().unwrap();
             for m in moves.into_iter() {

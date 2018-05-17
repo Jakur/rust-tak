@@ -30,7 +30,7 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
                 return (true, Victory::Neither)
             } else {
                 self.ply += 1;
-                return (true, self.rules.check_win(self.current_color()))
+                return (true, self.rules.check_win(self.current_player_color()))
             }
         } else {
             return (false, Victory::Neither)
@@ -46,7 +46,7 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
             }
             return false
         } else {
-            let color = self.current_color();
+            let color = self.current_player_color();
             if self.rules.make_move(m, color) {
                 return true
             }
@@ -55,7 +55,7 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
     }
     ///Returns the color of player whose move it is. Note that this may be distinct from the color
     /// of the piece which is being played, as in the opening for a standard game of Tak.
-    pub fn current_color(&self) -> Color {
+    pub fn current_player_color(&self) -> Color {
         self.rules.current_color(self.ply)
     }
     ///Prints the board with the most relevant board state information
@@ -79,8 +79,9 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
     pub fn get_size(&self) -> usize {
         self.rules.get_state().size as usize
     }
-
-    pub fn next_to_move(&self) -> Color {
+    ///Returns the color of the next piece which will be played. This is not the same as current
+    /// player color, which determines whether the white or black player has the right to move
+    pub fn next_piece_color(&self) -> Color {
         if self.opening.is_opening(&self) {
             self.opening.current_color(self.ply)
         } else {
