@@ -27,8 +27,8 @@ pub enum Move {
 #[derive(Debug, PartialEq)]
 pub enum Victory {
     Neither,
-    White(i32),
-    Black(i32),
+    White(u32),
+    Black(u32),
     Draw,
 }
 
@@ -528,10 +528,10 @@ pub trait RuleSet {
                 _ => {},
             }
         }
-        if white > black {
-            return Victory::White(white);
-        } else if black > white {
-            return Victory::Black(black);
+        if white > black + self.get_komi() {
+            return Victory::White(white - self.get_komi());
+        } else if black + self.get_komi() > white {
+            return Victory::Black(black + self.get_komi());
         }
         return Victory::Draw;
     }
@@ -569,16 +569,20 @@ pub trait RuleSet {
     fn add_notation(&mut self, string: String) {
         self.get_mut_state().notation.push(string);
     }
+    ///Return the komi for the game, or 0 if there is none
+    fn get_komi(&self) -> u32;
 }
 
 pub struct StandardRules {
     pub state: State,
+    pub komi: u32,
 }
 
 impl StandardRules {
-    pub fn new(state: State) -> StandardRules {
+    pub fn new(state: State, komi: u32) -> StandardRules {
         StandardRules {
             state,
+            komi
         }
     }
 
@@ -609,5 +613,9 @@ impl RuleSet for StandardRules {
 
     fn get_mut_state(&mut self) -> &mut State {
         &mut self.state
+    }
+
+    fn get_komi(&self) -> u32 {
+        self.komi
     }
 }

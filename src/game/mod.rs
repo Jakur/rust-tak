@@ -87,6 +87,10 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
             self.rules.current_color(self.ply)
         }
     }
+
+    pub fn get_komi(&self) -> u32 {
+        self.rules.get_komi()
+    }
 }
 
 ///Transforms a ptn string into a Move that can be understood by the server, or None if the given
@@ -142,7 +146,7 @@ fn col_match(string: String) -> u8 {
     }
 }
 ///Creates a game with standard rules and a standard opening of the given size
-pub fn make_standard_game(size: usize) -> Game<StandardRules, StandardOpening> {
-    let r = StandardRules::new(State::new(5));
+pub fn make_standard_game(size: usize, komi: u32) -> Game<StandardRules, StandardOpening> {
+    let r = StandardRules::new(State::new(5), komi);
     return Game::new(r, StandardOpening {})
 }

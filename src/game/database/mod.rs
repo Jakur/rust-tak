@@ -15,7 +15,7 @@ pub fn read_formatted_ptn(string: String) -> Option<(Game<StandardRules, Standar
             if s.starts_with("[Size ") {
                 let v: Vec<&str> = s.split("\"").collect();
                 let num = v[1].parse::<usize>().unwrap();
-                game = Some(super::make_standard_game(num));
+                game = Some(super::make_standard_game(num, 0));
             }
             continue;
         } else if s.len() < 1 { //Ignore blank lines
