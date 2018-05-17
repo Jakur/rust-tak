@@ -38,15 +38,13 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
     }
     fn execute_move(&mut self, m: Move) -> bool {
         if self.opening.is_opening(&self) {
-            match self.opening.legal_move(&self, &m) {
-                Some(color) => {
-                    if self.rules.make_move(m, color) {
-                        return true
-                    }
-                    return false
-                },
-                _ => return false
+            if self.opening.legal_move(&self, &m) {
+                let color = self.opening.current_color(self.ply);
+                if self.rules.make_move(m, color) {
+                    return true
+                }
             }
+            return false
         } else {
             let color = self.current_color();
             if self.rules.make_move(m, color) {
@@ -80,6 +78,14 @@ impl<R, O> Game<R, O> where R: RuleSet, O: Opening {
 
     pub fn get_size(&self) -> usize {
         self.rules.get_state().size as usize
+    }
+
+    pub fn next_to_move(&self) -> Color {
+        if self.opening.is_opening(&self) {
+            self.opening.current_color(self.ply)
+        } else {
+            self.rules.current_color(self.ply)
+        }
     }
 }
 

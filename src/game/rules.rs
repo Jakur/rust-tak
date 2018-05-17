@@ -190,10 +190,10 @@ pub struct Reached {
 }
 
 pub trait Opening {
-    fn legal_move<R, O>(&self, state: &Game<R, O>, m: &Move) -> Option<Color>
+    fn legal_move<R, O>(&self, state: &Game<R, O>, m: &Move) -> bool
         where R: RuleSet, O: Opening;
     fn is_opening<R, O>(&self, game: &Game<R, O>) -> bool where R: RuleSet, O: Opening;
-    fn current_color<R, O>(&self, game: &Game<R, O>) -> Color where R: RuleSet, O: Opening;
+    fn current_color(&self, ply: u32) -> Color;
 }
 
 pub struct StandardOpening {
@@ -203,25 +203,23 @@ pub struct StandardOpening {
 impl Opening for StandardOpening {
     ///If the move is illegal under the opening rules returns None. If it is legal, it returns
     /// the color of the piece which will be placed.
-    fn legal_move<R, O>(&self, game: &Game<R, O>, m: &Move) -> Option<Color>
+    fn legal_move<R, O>(&self, game: &Game<R, O>, m: &Move) -> bool
         where R: RuleSet, O: Opening {
         match m {
             &Move::Place(ref kind, tuple, _) => {
                 if let &PieceKind::Flat = kind {
                     if game.rules.out_of_bounds(tuple) {
-                        return None
+                        false
                     } else {
                         if game.rules.get_tile(tuple).is_empty() {
-                            if game.ply == 0 { //First piece is black
-                                return Some(Color::Black)
-                            }
-                            return Some(Color::White) //Second piece is white
+                            true
+                        } else {
+                            false
                         }
-                        return None
                     }
-                } else {return None}
+                } else {false}
             }
-            _ => return None
+            _ => false
         }
     }
     ///Returns true if the next ply is considered to be out of the opening
@@ -229,10 +227,11 @@ impl Opening for StandardOpening {
         return game.ply < 2
     }
     ///Returns the color of the piece that will be placed during this ply
-    fn current_color<R, O>(&self, game: &Game<R, O>) -> Color where R: RuleSet, O: Opening {
-        match game.rules.current_color(game.ply) {
-            Color::White => Color::Black,
-            Color::Black => Color::White,
+    fn current_color(&self, ply: u32) -> Color {
+        if ply % 2 == 0 {
+            Color::Black
+        } else {
+            Color::White
         }
     }
 }
