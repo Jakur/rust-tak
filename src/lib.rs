@@ -8,6 +8,8 @@ extern crate sqlite;
 
 pub mod game;
 
+use failure::{Error};
+
 #[cfg(test)]
 mod tests {
 
