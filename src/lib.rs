@@ -8,7 +8,7 @@ extern crate sqlite;
 
 pub mod game;
 
-use failure::{Error};
+use failure::Error;
 
 #[cfg(test)]
 mod tests {
@@ -43,6 +43,13 @@ mod tests {
         }
         println!("\n{:?}", &game.rules.state.board);
         game.rules.check_win(Color::White);
+    }
+
+    #[test]
+    fn test_size() {
+        use std::mem::size_of;
+        println!("{}", size_of::<Piece>());
+        println!("{}", size_of::<Move>());
     }
 
     #[test]

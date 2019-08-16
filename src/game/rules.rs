@@ -41,6 +41,7 @@ pub enum Victory {
     Draw,
 }
 
+#[derive(Clone, Copy)]
 pub struct Piece {
     color: Color,
     kind: PieceKind,
@@ -170,6 +171,10 @@ impl State {
         self.get_player(color).caps > 0
     }
 
+    pub fn get_tile(&self, row: u8, col: u8) -> &Tile {
+        self.board.get((row as usize, col as usize)).unwrap()
+    }
+
     pub fn get_mut_tile(&mut self, row: u8, col: u8) -> &mut Tile {
         self.board.get_mut((row as usize, col as usize)).unwrap()
     }
@@ -186,6 +191,10 @@ impl State {
             Color::White => &mut self.player1,
             Color::Black => &mut self.player2,
         }
+    }
+
+    pub fn add_notation(&mut self, ptn: String) {
+        self.notation.push(ptn);
     }
 }
 
@@ -247,11 +256,11 @@ pub struct Reached {
 pub trait Opening {
     fn legal_move<R, O>(&self, state: &Game<R, O>, m: &Move) -> bool
     where
-        R: RuleSet,
+        R: Rules,
         O: Opening;
     fn is_opening<R, O>(&self, game: &Game<R, O>) -> bool
     where
-        R: RuleSet,
+        R: Rules,
         O: Opening;
     fn current_color(&self, ply: u32) -> Color;
 }
@@ -264,7 +273,7 @@ impl Opening for StandardOpening {
     /// the color of the piece which will be placed.
     fn legal_move<R, O>(&self, game: &Game<R, O>, m: &Move) -> bool
     where
-        R: RuleSet,
+        R: Rules,
         O: Opening,
     {
         match m {
@@ -289,7 +298,7 @@ impl Opening for StandardOpening {
     ///Returns true if the next ply is considered to be out of the opening
     fn is_opening<R, O>(&self, game: &Game<R, O>) -> bool
     where
-        R: RuleSet,
+        R: Rules,
         O: Opening,
     {
         return game.ply < 2;
@@ -304,7 +313,25 @@ impl Opening for StandardOpening {
     }
 }
 
-pub trait MovementRules {
+pub trait Rules {
+    ///Makes a move and returns true if a move is valid under this rule set else returns false.
+    fn make_move(&mut self, m: Move) -> Result<(), Error> {
+        let ptn = match m {
+            Move::Place(kind, (row, col), ptn) => {
+                let color = self.current_color();
+                let piece = Piece::new(color, kind);
+                self.place_move(piece, row, col)?;
+                ptn
+            }
+            Move::Throw(source, dir, vec, ptn) => {
+                self.stack_move(source, dir, vec)?;
+                ptn
+            }
+        };
+        self.get_mut_state().add_notation(ptn);
+        Ok(())
+    }
+
     fn place_move(&mut self, piece: Piece, row: u8, col: u8) -> Result<(), Error> {
         let state = self.get_mut_state();
         let color = piece.color;
@@ -327,166 +354,145 @@ pub trait MovementRules {
         }
         Ok(())
     }
-    fn stack_move(&mut self) -> Result<(), Error>;
-    fn get_mut_state(&mut self) -> &mut State;
-    fn get_state(&self) -> &State;
-}
+    fn stack_move(&mut self, source: (u8, u8, u8), dir: char, vec: Vec<u8>) -> Result<(), Error> {
+        let state = self.get_mut_state();
+        if source.0 > state.size || state.out_of_bounds(source.1, source.2) {
+            bail!("Invalid move signature for this board");
+        }
+        let source_tile = state.get_tile(source.1, source.2);
+        if vec.len() < 1 || source_tile.is_empty() {
+            bail!("Moving from an empty tile");
+        }
+        let mut x = source.1;
+        let mut y = source.2;
 
-pub trait RuleSet {
-    ///Makes a move and returns true if a move is valid under this rule set else returns false.
-    fn make_move(&mut self, m: Move, color: Color) -> bool {
-        if let Move::Place(c, (a, b), ptn) = m {
-            if let PieceKind::Cap = c {
-                if self.is_empty((a, b))
-                    && !self.out_of_bounds((a, b))
-                    && self.has_capstone(self.current_player(color.clone()))
-                {
-                    self.get_mut_tile((a, b))
-                        .add_piece(Piece::new(color.clone(), c));
-                    match color {
-                        Color::White => self.get_mut_state().player1.caps -= 1,
-                        Color::Black => self.get_mut_state().player2.caps -= 1,
-                    }
-                    self.add_notation(ptn);
-                    return true;
+        //Check if the farthest target is on the board, usize is Copy so no problems here
+        match dir {
+            '+' => x += vec.len() as u8,
+            '-' => {
+                if x as usize >= vec.len() {
+                    x -= vec.len() as u8
                 } else {
-                    return false;
+                    bail!("Target tile(s) off the board");
                 }
-            } else {
-                if self.is_empty((a, b)) && !self.out_of_bounds((a, b)) {
-                    self.get_mut_tile((a, b))
-                        .add_piece(Piece::new(color.clone(), c));
-                    match color {
-                        Color::White => self.get_mut_state().player1.pieces -= 1,
-                        Color::Black => self.get_mut_state().player2.pieces -= 1,
+            }
+            '<' => {
+                if y as usize >= vec.len() {
+                    y -= vec.len() as u8
+                } else {
+                    bail!("Target tile(s) off the board");
+                }
+            }
+            '>' => y += vec.len() as u8,
+            _ => bail!("Unknown movement direction"), //Invalid
+        }
+        if state.out_of_bounds(x, y) {
+            bail!("Target tile(s) off the board");
+        }
+        //Delay reset x, y
+        //Check the last position in the throw vector for special case wall crush
+        let (last_x, last_y) = {
+            let last_tile = state.get_tile(x, y);
+            //We assume the vec to be in normal stack order.
+            if !last_tile.stack.is_empty() {
+                match last_tile.top_unchecked().kind {
+                    PieceKind::Wall => {
+                        //Check for valid crush
+                        if let PieceKind::Cap =
+                            state.get_tile(source.1, source.2).top().unwrap().kind
+                        {
+                            if vec[vec.len() - 1] != 1 {
+                                bail!(
+                                    "The capstone must step alone\
+                                     to crush walls"
+                                );
+                            }
+                        } else {
+                            bail!("Cannot crush a wall without a capstone");
+                        }
                     }
-                    self.add_notation(ptn);
-                    return true;
+                    PieceKind::Cap => {
+                        bail!("Cannot end throw on a capstone");
+                    }
+                    _ => {}
                 }
-                return false;
+            }
+            (x, y)
+        };
+        x = source.1;
+        y = source.2;
+        let mut sum = 0;
+        for val in vec.iter() {
+            match dir {
+                // Optimize into one match later, if necessary
+                '+' => x += 1,
+                '-' => x -= 1,
+                '<' => y -= 1,
+                '>' => y += 1,
+                _ => unreachable!(), // Already checked
+            }
+            if !(x == last_x && y == last_y) {
+                // Already checked the last tile
+                match state.get_tile(x, y).top() {
+                    Some(p) => match p.kind {
+                        PieceKind::Flat => {}
+                        _ => bail!("Cannot move through a wall or capstone"),
+                    },
+                    None => {}
+                }
+            }
+            sum += *val;
+        }
+        //Now that we've found the move valid, we execute it, in reverse
+        let source_len = state.get_mut_tile(source.1, source.2).stack.len();
+        let mut source_vec = state
+            .get_mut_tile(source.1, source.2)
+            .stack
+            .split_off(source_len - sum as usize);
+
+        for val in vec.iter().rev() {
+            let val = *val as usize;
+            let length = source_vec.len();
+            state
+                .get_mut_tile(x, y)
+                .add_pieces(source_vec.drain(length - val..length).collect());
+            match dir {
+                //Optimize into one match later, if necessary
+                '+' => x -= 1,
+                '-' => x += 1,
+                '<' => y += 1,
+                '>' => y -= 1,
+                _ => unreachable!(), // Already checked
+            }
+        }
+        Ok(())
+    }
+    /// Whether or not the game is in the opening phase, the phase of the game
+    /// where the rules behave differently than normal. In a standard game this
+    /// corresponds to the first two plies
+    fn is_opening(&self) -> bool {
+        self.current_ply() < 2
+    }
+
+    /// The 0-indexed ply count of the game
+    fn current_ply(&self) -> u32;
+
+    /// The color of a flat if one were laid. This usually corresponds to
+    /// the active player's color.
+    fn current_color(&self) -> Color {
+        if self.is_opening() {
+            // Colors reversed in opening
+            if self.current_ply() % 2 == 0 {
+                Color::Black
+            } else {
+                Color::White
             }
         } else {
-            //Stack throw
-            let (source, dir, vec, ptn) = match m {
-                Move::Throw(source, dir, vec, ptn) => (source, dir, vec, ptn),
-                _ => return false, //This should not happen
-            };
-            if source.0 > self.get_size() || self.out_of_bounds((source.1, source.2)) {
-                return false;
+            if self.current_ply() % 2 == 0 {
+                Color::White
+            } else {
+                Color::Black
             }
-            {
-                let source_tile = self.get_tile((source.1, source.2));
-                if vec.len() < 1 || source_tile.is_empty() {
-                    //Moving from an empty tile
-                    return false;
-                }
-                if color != source_tile.top().unwrap().color {
-                    //Moving a stack we don't control
-                    return false;
-                }
-            }
-            let mut x = source.1;
-            let mut y = source.2;
-
-            //Check if the farthest target is on the board, usize is Copy so no problems here
-            match dir {
-                '+' => x += vec.len() as u8,
-                '-' => {
-                    if x as usize >= vec.len() {
-                        x -= vec.len() as u8
-                    } else {
-                        return false;
-                    }
-                }
-                '<' => {
-                    if y as usize >= vec.len() {
-                        y -= vec.len() as u8
-                    } else {
-                        return false;
-                    }
-                }
-                '>' => y += vec.len() as u8,
-                _ => return false, //Invalid
-            }
-            if self.out_of_bounds((x, y)) {
-                return false;
-            }
-            //Delay reset x, y
-            //Check the last position in the throw vector for special case wall crush
-            let (last_x, last_y) = {
-                let last_tile = self.get_tile((x, y));
-                //We assume the vec to be in normal stack order.
-                if !last_tile.stack.is_empty() {
-                    match last_tile.top_unchecked().kind {
-                        PieceKind::Wall => {
-                            //Check for valid crush
-                            if let PieceKind::Cap =
-                                self.get_tile((source.1, source.2)).top().unwrap().kind
-                            {
-                                if vec[vec.len() - 1] != 1 {
-                                    return false; //Only the Cap can crush
-                                }
-                            } else {
-                                return false;
-                            }
-                        }
-                        PieceKind::Cap => {
-                            //Cannot end throw on a Cap either
-                            return false;
-                        }
-                        _ => {}
-                    }
-                }
-                (x, y)
-            };
-            x = source.1;
-            y = source.2;
-            let mut sum = 0;
-            for val in vec.iter() {
-                match dir {
-                    //Optimize into one match later, if necessary
-                    '+' => x += 1,
-                    '-' => x -= 1,
-                    '<' => y -= 1,
-                    '>' => y += 1,
-                    _ => return false, //Invalid
-                }
-                if !(x == last_x && y == last_y) {
-                    //Already checked the last tile
-                    match self.get_tile((x, y)).top() {
-                        Some(p) => match p.kind {
-                            PieceKind::Flat => {}
-                            _ => return false,
-                        },
-                        _ => {}
-                    }
-                }
-                sum += *val;
-            }
-            //Now that we've found the move valid, we execute it, in reverse
-            let source_len = self.get_mut_tile((source.1, source.2)).stack.len();
-            let mut source_vec = self
-                .get_mut_tile((source.1, source.2))
-                .stack
-                .split_off(source_len - sum as usize);
-
-
-            for val in vec.iter().rev() {
-                let val = *val as usize;
-                let length = source_vec.len();
-                self.get_mut_tile((x, y))
-                    .add_pieces(source_vec.drain(length - val..length).collect());
-                match dir {
-                    //Optimize into one match later, if necessary
-                    '+' => x -= 1,
-                    '-' => x += 1,
-                    '<' => y += 1,
-                    '>' => y -= 1,
-                    _ => panic!("Partially executed move found invalid!"), //Todo not kill whole program with this.
-                }
-            }
-            self.add_notation(ptn);
-            return true;
         }
     }
     fn is_empty(&self, index: (u8, u8)) -> bool {
@@ -760,13 +766,6 @@ pub trait RuleSet {
             || pos.1 == 0
             || pos.1 == (self.get_size() - 1) as usize
     }
-    fn current_color(&self, ply: u32) -> Color {
-        if ply % 2 == 0 {
-            Color::White
-        } else {
-            Color::Black
-        }
-    }
     fn add_notation(&mut self, string: String) {
         self.get_mut_state().notation.push(string);
     }
@@ -804,7 +803,7 @@ impl StandardRules {
     }
 }
 
-impl RuleSet for StandardRules {
+impl Rules for StandardRules {
     fn get_state(&self) -> &State {
         &self.state
     }
@@ -815,5 +814,9 @@ impl RuleSet for StandardRules {
 
     fn get_komi(&self) -> u32 {
         self.komi
+    }
+
+    fn current_ply(&self) -> u32 {
+        self.get_state().notation.len() as u32
     }
 }

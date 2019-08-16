@@ -54,9 +54,15 @@ pub trait TakGame {
     fn get_mut_state(&self) -> &mut State;
 }
 
+// impl<R: RuleSet, O: Opening> TakGame for Game<R, O> {
+//     fn make_move(&mut self, m: Move) -> Result<Victory, Error> {
+//         Ok(self.check_win())
+//     }
+// }
+
 pub struct Game<R, O>
 where
-    R: RuleSet,
+    R: Rules,
     O: Opening,
 {
     pub rules: R,
@@ -66,7 +72,7 @@ where
 
 impl<R, O> Game<R, O>
 where
-    R: RuleSet,
+    R: Rules,
     O: Opening,
 {
     ///Creates a new game, consuming a given rule set and opening
@@ -95,15 +101,13 @@ where
     fn execute_move(&mut self, m: Move) -> bool {
         if self.opening.is_opening(&self) {
             if self.opening.legal_move(&self, &m) {
-                let color = self.opening.current_color(self.ply);
-                if self.rules.make_move(m, color) {
+                if self.rules.make_move(m).is_ok() {
                     return true;
                 }
             }
             return false;
         } else {
-            let color = self.current_player_color();
-            if self.rules.make_move(m, color) {
+            if self.rules.make_move(m).is_ok() {
                 return true;
             }
             return false;
@@ -112,7 +116,7 @@ where
     ///Returns the color of player whose move it is. Note that this may be distinct from the color
     /// of the piece which is being played, as in the opening for a standard game of Tak.
     pub fn current_player_color(&self) -> Color {
-        self.rules.current_color(self.ply)
+        self.rules.current_color()
     }
     ///Prints the board with the most relevant board state information
     pub fn print_board(&self) {
@@ -141,7 +145,7 @@ where
         if self.opening.is_opening(&self) {
             self.opening.current_color(self.ply)
         } else {
-            self.rules.current_color(self.ply)
+            self.rules.current_color()
         }
     }
 
