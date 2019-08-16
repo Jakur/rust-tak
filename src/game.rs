@@ -60,26 +60,16 @@ pub trait TakGame {
 //     }
 // }
 
-pub struct Game<R, O>
-where
-    R: Rules,
-    O: Opening,
-{
-    pub rules: R,
-    pub opening: O,
+pub struct Game {
+    pub rules: Box<Rules>,
     pub ply: u32,
 }
 
-impl<R, O> Game<R, O>
-where
-    R: Rules,
-    O: Opening,
-{
+impl Game {
     ///Creates a new game, consuming a given rule set and opening
-    pub fn new(rules: R, opening: O) -> Game<R, O> {
+    pub fn new(rules: Box<Rules>) -> Game {
         Game {
             rules,
-            opening,
             ply: 0,
         }
     }
@@ -87,7 +77,7 @@ where
     /// was successfully executed and second the victory condition of the board state.
     pub fn read_move(&mut self, m: Move) -> (bool, Victory) {
         if self.execute_move(m) {
-            if self.opening.is_opening(&self) {
+            if self.rules.is_opening() {
                 self.ply += 1;
                 return (true, Victory::Neither);
             } else {
@@ -99,19 +89,7 @@ where
         }
     }
     fn execute_move(&mut self, m: Move) -> bool {
-        if self.opening.is_opening(&self) {
-            if self.opening.legal_move(&self, &m) {
-                if self.rules.make_move(m).is_ok() {
-                    return true;
-                }
-            }
-            return false;
-        } else {
-            if self.rules.make_move(m).is_ok() {
-                return true;
-            }
-            return false;
-        }
+        self.rules.make_move(m).is_ok()
     }
     ///Returns the color of player whose move it is. Note that this may be distinct from the color
     /// of the piece which is being played, as in the opening for a standard game of Tak.
@@ -142,11 +120,7 @@ where
     ///Returns the color of the next piece which will be played. This is not the same as current
     /// player color, which determines whether the white or black player has the right to move
     pub fn next_piece_color(&self) -> Color {
-        if self.opening.is_opening(&self) {
-            self.opening.current_color(self.ply)
-        } else {
-            self.rules.current_color()
-        }
+        self.rules.current_color()
     }
 
     pub fn get_komi(&self) -> u32 {
@@ -232,7 +206,7 @@ fn col_match(string: String) -> u8 {
     }
 }
 ///Creates a game with standard rules and a standard opening of the given size
-pub fn make_standard_game(size: usize, komi: u32) -> Game<StandardRules, StandardOpening> {
-    let r = StandardRules::new(State::new(5), komi);
-    return Game::new(r, StandardOpening {});
+pub fn make_standard_game(size: u8, komi: u32) -> Game {
+    let r = StandardRules::new(State::new(size), komi);
+    return Game::new(Box::new(r));
 }

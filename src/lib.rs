@@ -21,7 +21,7 @@ mod tests {
     fn display_test() {
         let (moves, _res, size) = get_playtak_game("games_anon.db", 220000);
         let r = StandardRules::new(State::new(size as u8), 0);
-        let mut game = Game::new(r, StandardOpening {});
+        let mut game = Game::new(Box::new(r));
         for m in moves.into_iter() {
             let attempt_move = game.read_move(m);
             assert!(attempt_move.0);
@@ -32,16 +32,23 @@ mod tests {
     #[test]
     fn search_bench() {
         // Todo fix benchmarks
-        let r = StandardRules::new(State::new(5), 0);
-        let mut game = Game::new(r, StandardOpening {});
-        for x in 1..game.rules.state.size {
-            game.rules.place_w_flat((0, x));
-            game.rules.place_w_flat((1, x));
-            game.rules.place_w_flat((2, x));
-            game.rules.place_w_flat((3, x));
-            game.rules.place_w_flat((4, x));
+        let size = 5;
+        let r = StandardRules::new(State::new(size), 0);
+        let mut game = Game::new(Box::new(r));
+        let mut place_w_flat = |index| {
+            game.rules.get_mut_tile(index).add_piece(Piece {
+                color: Color::White,
+                kind: PieceKind::Flat,
+            });
+        };
+        for x in 1..size {
+            place_w_flat((0, x));
+            place_w_flat((1, x));
+            place_w_flat((2, x));
+            place_w_flat((3, x));
+            place_w_flat((4, x));
         }
-        println!("\n{:?}", &game.rules.state.board);
+        println!("\n{:?}", &game.rules.get_state().board);
         game.rules.check_win(Color::White);
     }
 
@@ -49,31 +56,23 @@ mod tests {
     fn test_size() {
         use std::mem::size_of;
         println!("{}", size_of::<Piece>());
-        println!("{}", size_of::<Move>());
+        println!("{}", size_of::<Move>())
     }
 
     #[test]
     fn test_illegal_cases() {
-        fn execute<R, O>(game: &mut Game<R, O>, vec: Vec<&str>)
-        where
-            R: RuleSet,
-            O: Opening,
-        {
+        fn execute(game: &mut Game, vec: Vec<&str>) {
             let moves = vec.into_iter().map(|m| ptn_move(m).unwrap());
             moves.for_each(|m| {
                 game.read_move(m);
                 ()
             });
         }
-        fn assert_illegal<R, O>(game: &mut Game<R, O>, string: &str)
-        where
-            R: RuleSet,
-            O: Opening,
-        {
+        fn assert_illegal(game: &mut Game, string: &str) {
             assert!(!game.read_move(ptn_move(string).unwrap()).0);
         }
         let r = StandardRules::new(State::new(5), 0);
-        let mut game = Game::new(r, StandardOpening {});
+        let mut game = Game::new(Box::new(r));
         execute(
             &mut game,
             vec!["a5", "a1", "b1", "c1", "b2", "c2", "b3", "c3", "Cb4", "Cb5"],
@@ -95,7 +94,7 @@ mod tests {
             //Verified 150k - 220586
             let (mut moves, res, size) = get_playtak_game("games_anon.db", 220000);
             let r = StandardRules::new(State::new(size as u8), 0);
-            let mut game = Game::new(r, StandardOpening {});
+            let mut game = Game::new(Box::new(r));
             let last = moves.pop().unwrap();
             for m in moves.into_iter() {
                 let attempt_move = game.read_move(m);

@@ -4,17 +4,15 @@ use std::error::Error;
 
 use super::Move;
 use super::Game;
-use super::StandardRules;
-use super::StandardOpening;
 
-pub fn read_formatted_ptn(string: String) -> Option<(Game<StandardRules, StandardOpening>, Vec<Move>)> {
-    let mut game: Option<Game<StandardRules, StandardOpening>> = None;
+pub fn read_formatted_ptn(string: String) -> Option<(Game, Vec<Move>)> {
+    let mut game: Option<Game> = None;
     let mut vec = Vec::new();
     for s in string.lines() {
         if s.starts_with("[") { //Game information lines
             if s.starts_with("[Size ") {
                 let v: Vec<&str> = s.split("\"").collect();
-                let num = v[1].parse::<usize>().unwrap();
+                let num = v[1].parse().unwrap();
                 game = Some(super::make_standard_game(num, 0));
             }
             continue;

@@ -1,7 +1,5 @@
-use super::Game;
 use failure::{bail, Error};
 use ndarray::Array2;
-
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -43,8 +41,8 @@ pub enum Victory {
 
 #[derive(Clone, Copy)]
 pub struct Piece {
-    color: Color,
-    kind: PieceKind,
+    pub color: Color,
+    pub kind: PieceKind,
 }
 
 impl Piece {
@@ -87,13 +85,13 @@ impl Tile {
             return Some(&self.stack[self.stack.len() - 1]);
         }
     }
-    fn top_unchecked(&self) -> &Piece {
+    pub fn top_unchecked(&self) -> &Piece {
         &self.stack.get(self.stack.len() - 1).unwrap()
     }
-    fn add_piece(&mut self, piece: Piece) {
+    pub fn add_piece(&mut self, piece: Piece) {
         self.stack.push(piece);
     }
-    fn add_pieces(&mut self, mut pieces: Vec<Piece>) {
+    pub fn add_pieces(&mut self, mut pieces: Vec<Piece>) {
         self.stack.append(&mut pieces);
     }
     pub fn is_empty(&self) -> bool {
@@ -251,66 +249,6 @@ pub struct Reached {
     south: bool,
     east: bool,
     west: bool,
-}
-
-pub trait Opening {
-    fn legal_move<R, O>(&self, state: &Game<R, O>, m: &Move) -> bool
-    where
-        R: Rules,
-        O: Opening;
-    fn is_opening<R, O>(&self, game: &Game<R, O>) -> bool
-    where
-        R: Rules,
-        O: Opening;
-    fn current_color(&self, ply: u32) -> Color;
-}
-
-pub struct StandardOpening {}
-
-
-impl Opening for StandardOpening {
-    ///If the move is illegal under the opening rules returns None. If it is legal, it returns
-    /// the color of the piece which will be placed.
-    fn legal_move<R, O>(&self, game: &Game<R, O>, m: &Move) -> bool
-    where
-        R: Rules,
-        O: Opening,
-    {
-        match m {
-            &Move::Place(ref kind, tuple, _) => {
-                if let &PieceKind::Flat = kind {
-                    if game.rules.out_of_bounds(tuple) {
-                        false
-                    } else {
-                        if game.rules.get_tile(tuple).is_empty() {
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        }
-    }
-    ///Returns true if the next ply is considered to be out of the opening
-    fn is_opening<R, O>(&self, game: &Game<R, O>) -> bool
-    where
-        R: Rules,
-        O: Opening,
-    {
-        return game.ply < 2;
-    }
-    ///Returns the color of the piece that will be placed during this ply
-    fn current_color(&self, ply: u32) -> Color {
-        if ply % 2 == 0 {
-            Color::Black
-        } else {
-            Color::White
-        }
-    }
 }
 
 pub trait Rules {
@@ -494,16 +432,6 @@ pub trait Rules {
                 Color::Black
             }
         }
-    }
-    fn is_empty(&self, index: (u8, u8)) -> bool {
-        self.get_tile(index).is_empty()
-    }
-    fn out_of_bounds(&self, index: (u8, u8)) -> bool {
-        if index.0 > self.get_size() || index.1 > self.get_size() {
-            //No lower check because unsigned
-            return true;
-        }
-        false
     }
     fn check_win(&self, last_to_move: Color) -> Victory {
         let discovered: Rc<RefCell<HashSet<(usize, usize)>>> =
@@ -781,25 +709,6 @@ pub struct StandardRules {
 impl StandardRules {
     pub fn new(state: State, komi: u32) -> StandardRules {
         StandardRules { state, komi }
-    }
-
-    pub fn place_w_flat(&mut self, index: (u8, u8)) {
-        self.get_mut_tile(index).add_piece(Piece {
-            color: Color::White,
-            kind: PieceKind::Flat,
-        });
-    }
-    pub fn place_b_flat(&mut self, index: (u8, u8)) {
-        self.get_mut_tile(index).add_piece(Piece {
-            color: Color::Black,
-            kind: PieceKind::Flat,
-        });
-    }
-    pub fn place_w_wall(&mut self, index: (u8, u8)) {
-        self.get_mut_tile(index).add_piece(Piece {
-            color: Color::White,
-            kind: PieceKind::Wall,
-        });
     }
 }
 
