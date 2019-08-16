@@ -165,6 +165,12 @@ impl State {
             .is_some()
     }
 
+    pub fn is_edge(&self, pos: (usize, usize)) -> bool {
+        let row = pos.0 as u8;
+        let col = pos.1 as u8;
+        row == 0 || row == (self.size - 1) || col == 0 || col == (self.size - 1)
+    }
+
     pub fn has_capstone(&self, color: Color) -> bool {
         self.get_player(color).caps > 0
     }
@@ -252,17 +258,30 @@ pub struct Reached {
 }
 
 pub trait Rules {
-    ///Makes a move and returns true if a move is valid under this rule set else returns false.
+    /// Returns true if a given move is legal but does not execute the move
+    fn legal_move(&self, m: Move) -> bool {
+        match m {
+            Move::Place(kind, (row, col), _ptn) => {
+                let color = self.current_color();
+                let piece = Piece::new(color, kind);
+                self.legal_place_move(piece, row, col).is_ok()
+            }
+            Move::Throw(source, dir, vec, _ptn) => self.legal_stack_move(source, dir, &vec).is_ok(),
+        }
+    }
+    /// Attempts to make a move returning Ok if successful or Error if unsuccessful
     fn make_move(&mut self, m: Move) -> Result<(), Error> {
         let ptn = match m {
             Move::Place(kind, (row, col), ptn) => {
                 let color = self.current_color();
                 let piece = Piece::new(color, kind);
-                self.place_move(piece, row, col)?;
+                self.legal_place_move(piece, row, col)?;
+                self.unchecked_place_move(piece, row, col);
                 ptn
             }
             Move::Throw(source, dir, vec, ptn) => {
-                self.stack_move(source, dir, vec)?;
+                let res = self.legal_stack_move(source, dir, &vec)?;
+                self.unchecked_stack_move(source, dir, vec, res);
                 ptn
             }
         };
@@ -270,30 +289,74 @@ pub trait Rules {
         Ok(())
     }
 
-    fn place_move(&mut self, piece: Piece, row: u8, col: u8) -> Result<(), Error> {
+    fn unchecked_place_move(&mut self, piece: Piece, row: u8, col: u8) {
         let state = self.get_mut_state();
         let color = piece.color;
+        match piece.kind {
+            PieceKind::Cap => {
+                state.get_mut_player(color).caps -= 1;
+            }
+            _ => {
+                state.get_mut_player(color).pieces -= 1;
+            }
+        }
+        state.get_mut_tile(row, col).add_piece(piece);
+    }
+
+    fn legal_place_move(&self, piece: Piece, row: u8, col: u8) -> Result<(), Error> {
+        let state = self.get_state();
         // Check valid square for placing a piece
         if state.out_of_bounds(row, col) || !state.is_empty(row, col) {
             bail!("Invalid square selected");
         }
-        match piece.kind {
-            PieceKind::Cap => {
-                if !state.has_capstone(piece.color) {
-                    bail!("Player has no capstones left");
-                }
-                state.get_mut_tile(row, col).add_piece(piece);
-                state.get_mut_player(color).caps -= 1;
-            }
-            _ => {
-                state.get_mut_tile(row, col).add_piece(piece);
-                state.get_mut_player(color).pieces -= 1;
+        if let PieceKind::Cap = piece.kind {
+            if !state.has_capstone(piece.color) {
+                bail!("Player has no capstones left");
             }
         }
         Ok(())
     }
-    fn stack_move(&mut self, source: (u8, u8, u8), dir: char, vec: Vec<u8>) -> Result<(), Error> {
+
+    fn unchecked_stack_move(
+        &mut self,
+        source: (u8, u8, u8),
+        dir: char,
+        vec: Vec<u8>,
+        res: (u8, u8, u8),
+    ) {
         let state = self.get_mut_state();
+        let (sum, mut x, mut y) = res;
+        // Now that we've found the move valid, we execute it, in reverse
+        let source_len = state.get_mut_tile(source.1, source.2).stack.len();
+        let mut source_vec = state
+            .get_mut_tile(source.1, source.2)
+            .stack
+            .split_off(source_len - sum as usize);
+
+        for val in vec.iter().rev() {
+            let val = *val as usize;
+            let length = source_vec.len();
+            state
+                .get_mut_tile(x, y)
+                .add_pieces(source_vec.drain(length - val..length).collect());
+            match dir {
+                //Optimize into one match later, if necessary
+                '+' => x -= 1,
+                '-' => x += 1,
+                '<' => y += 1,
+                '>' => y -= 1,
+                _ => unreachable!(), // Already checked
+            }
+        }
+    }
+
+    fn legal_stack_move(
+        &self,
+        source: (u8, u8, u8),
+        dir: char,
+        vec: &[u8],
+    ) -> Result<(u8, u8, u8), Error> {
+        let state = self.get_state();
         if source.0 > state.size || state.out_of_bounds(source.1, source.2) {
             bail!("Invalid move signature for this board");
         }
@@ -381,29 +444,8 @@ pub trait Rules {
             }
             sum += *val;
         }
-        //Now that we've found the move valid, we execute it, in reverse
-        let source_len = state.get_mut_tile(source.1, source.2).stack.len();
-        let mut source_vec = state
-            .get_mut_tile(source.1, source.2)
-            .stack
-            .split_off(source_len - sum as usize);
 
-        for val in vec.iter().rev() {
-            let val = *val as usize;
-            let length = source_vec.len();
-            state
-                .get_mut_tile(x, y)
-                .add_pieces(source_vec.drain(length - val..length).collect());
-            match dir {
-                //Optimize into one match later, if necessary
-                '+' => x -= 1,
-                '-' => x += 1,
-                '<' => y += 1,
-                '>' => y -= 1,
-                _ => unreachable!(), // Already checked
-            }
-        }
-        Ok(())
+        Ok((sum, x, y))
     }
     /// Whether or not the game is in the opening phase, the phase of the game
     /// where the rules behave differently than normal. In a standard game this
@@ -411,9 +453,6 @@ pub trait Rules {
     fn is_opening(&self) -> bool {
         self.current_ply() < 2
     }
-
-    /// The 0-indexed ply count of the game
-    fn current_ply(&self) -> u32;
 
     /// The color of a flat if one were laid. This usually corresponds to
     /// the active player's color.
@@ -441,7 +480,7 @@ pub trait Rules {
             .get_state()
             .board
             .indexed_iter()
-            .filter(|x| self.is_edge(x.0));
+            .filter(|x| self.get_state().is_edge(x.0));
         let mut white_road = false;
         let mut black_road = false;
         //Road check for both players
@@ -688,17 +727,14 @@ pub trait Rules {
     }
     fn get_state(&self) -> &State;
     fn get_mut_state(&mut self) -> &mut State;
-    fn is_edge(&self, pos: (usize, usize)) -> bool {
-        pos.0 == 0
-            || pos.0 == (self.get_size() - 1) as usize
-            || pos.1 == 0
-            || pos.1 == (self.get_size() - 1) as usize
-    }
     fn add_notation(&mut self, string: String) {
         self.get_mut_state().notation.push(string);
     }
     ///Return the komi for the game, or 0 if there is none
     fn get_komi(&self) -> u32;
+
+    /// The 0-indexed ply count of the game
+    fn current_ply(&self) -> u32;
 }
 
 pub struct StandardRules {
