@@ -485,10 +485,8 @@ pub trait Rules {
         let mut black_road = false;
         //Road check for both players
         for t in iter {
-            {
-                if discovered.borrow_mut().contains(&t.0) {
-                    continue;
-                }
+            if discovered.borrow_mut().contains(&t.0) {
+                continue;
             }
             let white_piece = match (t.1).top() {
                 Some(&Piece {
@@ -518,14 +516,12 @@ pub trait Rules {
             };
             if (t.0).0 == 0 {
                 reached.north = true;
-            }
-            if (t.0).0 == self.get_size() as usize - 1 {
+            } else if (t.0).0 == self.get_size() as usize - 1 {
                 reached.south = true;
             }
             if (t.0).1 == 0 {
                 reached.west = true;
-            }
-            if (t.0).1 == self.get_size() as usize - 1 {
+            } else if (t.0).1 == self.get_size() as usize - 1 {
                 reached.east = true;
             }
             let road = self.search(
@@ -542,17 +538,17 @@ pub trait Rules {
                 }
                 if white_road && black_road {
                     if let Color::White = last_to_move {
-                        return Victory::White(0);
+                        return Victory::WhiteRoad;
                     } else {
-                        return Victory::Black(0);
+                        return Victory::BlackRoad;
                     }
                 }
             }
         }
         if white_road {
-            return Victory::White(0);
+            return Victory::WhiteRoad;
         } else if black_road {
-            return Victory::Black(0);
+            return Victory::BlackRoad;
         }
         //Out of pieces check for both players
         if self.get_state().player1.pieces == 0 || self.get_state().player2.pieces == 0 {
