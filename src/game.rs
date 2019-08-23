@@ -1,9 +1,11 @@
 use regex::Regex;
 
-pub mod database;
+pub mod state;
 pub mod rules;
+pub mod database;
 
 pub use self::rules::*;
+pub use self::state::*;
 
 use super::Error;
 use ndarray::Array2;
