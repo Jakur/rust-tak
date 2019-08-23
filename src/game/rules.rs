@@ -689,10 +689,10 @@ pub trait Rules {
                 _ => {}
             }
         }
-        if white > black + self.get_komi() {
-            return Victory::White(white - self.get_komi());
-        } else if black + self.get_komi() > white {
-            return Victory::Black(black + self.get_komi());
+        if white > black {
+            return Victory::WhiteFlat(white);
+        } else if black > white {
+            return Victory::BlackFlat(black);
         }
         return Victory::Draw;
     }
@@ -726,8 +726,6 @@ pub trait Rules {
     fn add_notation(&mut self, string: String) {
         self.get_mut_state().notation.push(string);
     }
-    ///Return the komi for the game, or 0 if there is none
-    fn get_komi(&self) -> u32;
 
     /// The 0-indexed ply count of the game
     fn current_ply(&self) -> u32;
@@ -753,11 +751,54 @@ impl Rules for StandardRules {
         &mut self.state
     }
 
-    fn get_komi(&self) -> u32 {
-        self.komi
+    fn current_ply(&self) -> u32 {
+        self.get_state().notation.len() as u32
+    }
+}
+
+pub struct KomiRules {
+    pub state: State,
+    pub komi: u32,
+}
+
+impl Rules for KomiRules {
+    fn get_state(&self) -> &State {
+        &self.state
+    }
+
+    fn get_mut_state(&mut self) -> &mut State {
+        &mut self.state
     }
 
     fn current_ply(&self) -> u32 {
         self.get_state().notation.len() as u32
+    }
+
+    fn flat_game(&self) -> Victory {
+        let mut white = 0;
+        let mut black = 0;
+        for t in self.get_state().board.iter() {
+            match t.top() {
+                Some(&Piece {
+                    color: Color::White,
+                    kind: PieceKind::Flat,
+                }) => {
+                    white += 1;
+                }
+                Some(&Piece {
+                    color: Color::Black,
+                    kind: PieceKind::Flat,
+                }) => {
+                    black += 1;
+                }
+                _ => {}
+            }
+        }
+        if white > black + self.komi {
+            return Victory::WhiteFlat(white - self.komi);
+        } else if black + self.komi > white {
+            return Victory::BlackFlat(black + self.komi);
+        }
+        return Victory::Draw;
     }
 }

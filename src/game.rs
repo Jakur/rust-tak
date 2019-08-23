@@ -54,12 +54,6 @@ pub trait TakGame {
     fn get_mut_state(&self) -> &mut State;
 }
 
-// impl<R: RuleSet, O: Opening> TakGame for Game<R, O> {
-//     fn make_move(&mut self, m: Move) -> Result<Victory, Error> {
-//         Ok(self.check_win())
-//     }
-// }
-
 pub struct Game {
     pub rules: Box<Rules>,
     pub ply: u32,
@@ -68,10 +62,7 @@ pub struct Game {
 impl Game {
     ///Creates a new game, consuming a given rule set and opening
     pub fn new(rules: Box<Rules>) -> Game {
-        Game {
-            rules,
-            ply: 0,
-        }
+        Game { rules, ply: 0 }
     }
     ///Attempts to execute a given move. Returns a tuple containing first whether or not the move
     /// was successfully executed and second the victory condition of the board state.
@@ -121,10 +112,6 @@ impl Game {
     /// player color, which determines whether the white or black player has the right to move
     pub fn next_piece_color(&self) -> Color {
         self.rules.current_color()
-    }
-
-    pub fn get_komi(&self) -> u32 {
-        self.rules.get_komi()
     }
 }
 
