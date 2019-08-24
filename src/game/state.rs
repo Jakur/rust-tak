@@ -30,9 +30,23 @@ pub enum Victory {
     BlackFlat(u32),
     BlackRoad,
     BlackOther,
-    White(u32),
-    Black(u32),
     Draw,
+}
+
+impl fmt::Display for Victory {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let out = match &self {
+            Victory::Neither => "0-0",
+            Victory::WhiteFlat(_) => "F-0",
+            Victory::WhiteRoad => "R-0",
+            Victory::WhiteOther => "1-0",
+            Victory::BlackFlat(_) => "0-F",
+            Victory::BlackRoad => "0-R",
+            Victory::BlackOther => "0-1",
+            Victory::Draw => "1/2-1/2",
+        };
+        write!(f, "{}", out)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -155,10 +169,11 @@ impl State {
     /// True if the input square has no pieces on it, or vacuously true if the
     /// square is out of bounds
     pub fn is_empty(&self, row: u8, col: u8) -> bool {
-        self.board
-            .get((row as usize, col as usize))
-            .map(|tile| tile.top())
-            .is_some()
+        if let Some(tile) = self.board.get((row as usize, col as usize)) {
+            tile.is_empty()
+        } else {
+            true
+        }
     }
 
     pub fn is_edge(&self, pos: (usize, usize)) -> bool {

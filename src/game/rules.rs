@@ -120,6 +120,9 @@ pub trait Rules {
         if vec.len() < 1 || source_tile.is_empty() {
             bail!("Moving from an empty tile");
         }
+        if self.is_opening() {
+            bail!("Cannot move a stack in the opening");
+        }
         let mut x = source.1;
         let mut y = source.2;
 
@@ -228,7 +231,8 @@ pub trait Rules {
             }
         }
     }
-    fn check_win(&self, last_to_move: Color) -> Victory {
+    fn check_win(&self) -> Victory {
+        let last_to_move = self.current_color();
         let discovered: Rc<RefCell<HashSet<(usize, usize)>>> =
             Rc::new(RefCell::new(HashSet::new()));
         //This iter generation may be able to be optimized, we'll see

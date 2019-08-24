@@ -1,9 +1,9 @@
 use regex::Regex;
 
-pub mod state;
-pub mod rules;
-pub mod database;
 
+pub mod database;
+pub mod rules;
+pub mod state;
 pub use self::rules::*;
 pub use self::state::*;
 
@@ -67,27 +67,13 @@ impl Game {
         Game { rules, ply: 0 }
     }
     ///Attempts to execute a given move. Returns a tuple containing first whether or not the move
-    /// was successfully executed and second the victory condition of the board state.
-    pub fn read_move(&mut self, m: Move) -> (bool, Victory) {
-        if self.execute_move(m) {
-            if self.rules.is_opening() {
-                self.ply += 1;
-                return (true, Victory::Neither);
-            } else {
-                self.ply += 1;
-                return (true, self.rules.check_win(self.current_player_color()));
-            }
-        } else {
-            return (false, Victory::Neither);
-        }
+    /// Attemps to perform all actions necessary to progress forward one ply
+    pub fn do_ply(&mut self, m: Move) -> Result<Victory, Error> {
+        self.rules.make_move(m)?;
+        Ok(self.rules.check_win())
     }
-    fn execute_move(&mut self, m: Move) -> bool {
-        self.rules.make_move(m).is_ok()
-    }
-    ///Returns the color of player whose move it is. Note that this may be distinct from the color
-    /// of the piece which is being played, as in the opening for a standard game of Tak.
-    pub fn current_player_color(&self) -> Color {
-        self.rules.current_color()
+    pub fn legal_move(&self, m: Move) -> bool {
+        self.rules.legal_move(m)
     }
     ///Prints the board with the most relevant board state information
     pub fn print_board(&self) {
