@@ -82,13 +82,10 @@ mod tests {
         game.print_board();
         assert_illegal(&mut game, "3b3>111"); //pass through wall
         assert_illegal(&mut game, "3b3>12"); //crush wall with more than one piece in hand
-                                             // Todo active player fix
-                                             //assert_illegal(&mut game, "d3-"); //move piece active player doesn't control
+        assert_illegal(&mut game, "d3-"); //move piece active player doesn't control
         assert_illegal(&mut game, "a3<"); //move piece off board
         assert_illegal(&mut game, "Sd3"); //place on top of existing piece
         assert_illegal(&mut game, "Ce1"); //place cap that player doesn't have
-                                          //game.do_ply(ptn_move("Sd3").unwrap());
-                                          //game.print_board();
     }
 
     #[test]

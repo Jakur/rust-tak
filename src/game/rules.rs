@@ -113,12 +113,15 @@ pub trait Rules {
         vec: &[u8],
     ) -> Result<(u8, u8, u8), Error> {
         let state = self.get_state();
-        if source.0 > state.size || state.out_of_bounds(source.1, source.2) {
+        if source.0 > state.size || state.out_of_bounds(source.1, source.2) || vec.len() < 1 {
             bail!("Invalid move signature for this board");
         }
         let source_tile = state.get_tile(source.1, source.2);
-        if vec.len() < 1 || source_tile.is_empty() {
+        if source_tile.is_empty() {
             bail!("Moving from an empty tile");
+        }
+        if self.current_color() != source_tile.top_unchecked().color {
+            bail!("Cannot move a stack you don't control");
         }
         if self.is_opening() {
             bail!("Cannot move a stack in the opening");
