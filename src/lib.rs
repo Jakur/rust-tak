@@ -20,7 +20,7 @@ mod tests {
     #[test]
     fn display_test() {
         let (moves, _res, size) = get_playtak_game("games_anon.db", 220000);
-        let r = StandardRules::new(State::new(size as u8), 0);
+        let r = StandardRules::new(State::new(size as u8));
         let mut game = Game::new(Box::new(r));
         for m in moves.into_iter() {
             assert!(game.do_ply(m).is_ok());
@@ -32,7 +32,7 @@ mod tests {
     fn search_bench() {
         // Todo fix benchmarks
         let size = 5;
-        let r = StandardRules::new(State::new(size), 0);
+        let r = StandardRules::new(State::new(size));
         let mut game = Game::new(Box::new(r));
         let mut place_w_flat = |index| {
             game.rules.get_mut_tile(index).add_piece(Piece {
@@ -70,7 +70,7 @@ mod tests {
         fn assert_illegal(game: &mut Game, string: &str) {
             assert!(!game.legal_move(ptn_move(string).unwrap()));
         }
-        let r = StandardRules::new(State::new(5), 0);
+        let r = StandardRules::new(State::new(5));
         let mut game = Game::new(Box::new(r));
         execute(
             &mut game,
@@ -93,7 +93,7 @@ mod tests {
         for _id in 220000..220586 {
             //Verified 150k - 220586
             let (mut moves, res, size) = get_playtak_game("games_anon.db", 220000);
-            let r = StandardRules::new(State::new(size as u8), 0);
+            let r = StandardRules::new(State::new(size as u8));
             let mut game = Game::new(Box::new(r));
             let last = moves.pop().unwrap();
             for m in moves.into_iter() {
@@ -116,7 +116,7 @@ mod tests {
         let game_moves = ptn_moves
             .into_iter()
             .map(|m| game::ptn_move(m).expect("Valid ptn"));
-        let mut game = make_standard_game(5, 0);
+        let mut game = make_standard_game(5);
         for m in game_moves {
             let res = game.do_ply(m);
             assert!(res.is_ok());

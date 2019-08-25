@@ -1,22 +1,23 @@
-use std::fs::File;
-use std::io::prelude::*;
 use std::error::Error;
 
-use super::Move;
 use super::Game;
-
+use super::Move;
+use std::fs::File;
+use std::io::prelude::*;
 pub fn read_formatted_ptn(string: String) -> Option<(Game, Vec<Move>)> {
     let mut game: Option<Game> = None;
     let mut vec = Vec::new();
     for s in string.lines() {
-        if s.starts_with("[") { //Game information lines
+        if s.starts_with("[") {
+            //Game information lines
             if s.starts_with("[Size ") {
                 let v: Vec<&str> = s.split("\"").collect();
                 let num = v[1].parse().unwrap();
-                game = Some(super::make_standard_game(num, 0));
+                game = Some(super::make_standard_game(num));
             }
             continue;
-        } else if s.len() < 1 { //Ignore blank lines
+        } else if s.len() < 1 {
+            //Ignore blank lines
             continue;
         }
         let split_line: Vec<&str> = s.split_whitespace().collect();
@@ -35,7 +36,7 @@ pub fn read_ptn_file(name_string: &str) -> Result<String, Box<Error>> {
     let mut f = File::open(name_string)?;
     let mut out_string = String::new();
     f.read_to_string(&mut out_string)?;
-    return Ok(out_string)
+    return Ok(out_string);
 }
 
 pub fn decode_playtak_notation(str: &str) -> Vec<Move> {
@@ -45,7 +46,10 @@ pub fn decode_playtak_notation(str: &str) -> Vec<Move> {
         let transformed = transform_notation(m);
         vec.push(transformed);
     }
-    let vec: Vec<_> = vec.into_iter().map(|m| super::ptn_move(&m).unwrap()).collect();
+    let vec: Vec<_> = vec
+        .into_iter()
+        .map(|m| super::ptn_move(&m).unwrap())
+        .collect();
     vec
 }
 
@@ -54,10 +58,14 @@ fn transform_notation(str: &str) -> String {
     match split_move[0] {
         "P" => {
             if split_move.len() <= 2 {
-                return String::from(split_move[1].to_lowercase())
+                return String::from(split_move[1].to_lowercase());
             } else {
                 let mut s = {
-                    if split_move[2] == "C" {String::from("C")} else {String::from("S")}
+                    if split_move[2] == "C" {
+                        String::from("C")
+                    } else {
+                        String::from("S")
+                    }
                 };
                 s.push_str(&split_move[1].to_lowercase());
                 return s;
@@ -73,8 +81,8 @@ fn transform_notation(str: &str) -> String {
                 } else if col_dif > 0 {
                     "<"
                 } else {
-                    let row_dif = source[1].to_digit(10).unwrap() as i32 -
-                        dest[1].to_digit(10).unwrap() as i32;
+                    let row_dif = source[1].to_digit(10).unwrap() as i32
+                        - dest[1].to_digit(10).unwrap() as i32;
                     if row_dif > 0 {
                         "-"
                     } else {
@@ -91,9 +99,9 @@ fn transform_notation(str: &str) -> String {
             }
             let mut result = picked_up.to_string();
             result.push_str(&res_string);
-            return result
+            return result;
         }
-        _ => {return String::from("")}
+        _ => return String::from(""),
     }
 }
 

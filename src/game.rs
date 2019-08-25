@@ -181,7 +181,7 @@ fn col_match(string: String) -> u8 {
     }
 }
 ///Creates a game with standard rules and a standard opening of the given size
-pub fn make_standard_game(size: u8, komi: u32) -> Game {
-    let r = StandardRules::new(State::new(size), komi);
+pub fn make_standard_game(size: u8) -> Game {
+    let r = StandardRules::new(State::new(size));
     return Game::new(Box::new(r));
 }

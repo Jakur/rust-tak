@@ -496,12 +496,11 @@ pub trait Rules {
 
 pub struct StandardRules {
     pub state: State,
-    pub komi: u32,
 }
 
 impl StandardRules {
-    pub fn new(state: State, komi: u32) -> StandardRules {
-        StandardRules { state, komi }
+    pub fn new(state: State) -> StandardRules {
+        StandardRules { state }
     }
 }
 
